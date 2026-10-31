@@ -19,7 +19,7 @@ from llama_index.core.response_synthesizers import ResponseMode
 import chromadb
 
 import config
-from core_setup import get_chroma_vector_store, setup_global_settings
+from core_setup import get_chroma_vector_store, setup_global_settings, get_llm, resolve_llm_model
 
 # Soporte opcional para UI avanzada en terminal con Rich
 try:
@@ -44,13 +44,18 @@ def print_msg(text: str, style: str = ""):
         print(text)
 
 
-def load_chat_engine():
+def load_chat_engine(llm=None, model_name: Optional[str] = None):
     """
     Inicializa el entorno, conecta a la base vectorial ChromaDB persistente
     y crea el ChatEngine conversacional con memoria contextual y guardrails de alcance.
+    Permite especificar un LLM o nombre de modelo alternativo en tiempo de ejecución.
     """
     # 1. Configurar LLM y Embeddings
     setup_global_settings()
+
+    selected_llm = llm
+    if selected_llm is None and model_name is not None:
+        selected_llm = get_llm(model_name)
 
     # 2. Conectar a ChromaDB
     chroma_client = chromadb.PersistentClient(path=str(config.CHROMA_PERSIST_DIR))
@@ -70,12 +75,16 @@ def load_chat_engine():
     index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
     # 4. Crear ChatEngine conversacional con guardrails de alcance
-    chat_engine = index.as_chat_engine(
-        chat_mode="condense_plus_context",
-        similarity_top_k=config.SIMILARITY_TOP_K,
-        system_prompt=config.SYSTEM_PROMPT,
-        context_prompt=config.CHAT_CONTEXT_PROMPT,
-    )
+    chat_kwargs = {
+        "chat_mode": "condense_plus_context",
+        "similarity_top_k": config.SIMILARITY_TOP_K,
+        "system_prompt": config.SYSTEM_PROMPT,
+        "context_prompt": config.CHAT_CONTEXT_PROMPT,
+    }
+    if selected_llm is not None:
+        chat_kwargs["llm"] = selected_llm
+
+    chat_engine = index.as_chat_engine(**chat_kwargs)
     return chat_engine, count
 
 

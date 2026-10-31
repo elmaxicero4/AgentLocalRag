@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 import config
 from ingest import ingest_documents
 from query import load_chat_engine, clean_query_input, should_display_sources
-from core_setup import resolve_llm_model
+from core_setup import resolve_llm_model, get_installed_llm_models
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -63,16 +63,19 @@ def startup_event():
         print(f"[API Error] Error al cargar el motor RAG: {e}")
 
 
-def get_or_create_session(session_id: str, reset: bool = False):
-    """Retorna la instancia del motor de chat para una sesión o crea una nueva."""
-    if reset and session_id in sessions:
-        del sessions[session_id]
+def get_or_create_session(session_id: str, model_name: Optional[str] = None, reset: bool = False):
+    """Retorna la instancia del motor de chat para una sesión y modelo, o crea una nueva."""
+    resolved_model = resolve_llm_model(model_name)
+    cache_key = f"{session_id}::{resolved_model}"
 
-    if session_id not in sessions:
-        engine, _ = load_chat_engine()
-        sessions[session_id] = engine
+    if reset and cache_key in sessions:
+        del sessions[cache_key]
 
-    return sessions[session_id]
+    if cache_key not in sessions:
+        engine, _ = load_chat_engine(model_name=resolved_model)
+        sessions[cache_key] = engine
+
+    return sessions[cache_key], resolved_model
 
 
 # ==============================================================================
@@ -89,6 +92,11 @@ class QueryRequest(BaseModel):
         default="default",
         description="Identificador de sesión para conservar la memoria conversacional.",
         example="usuario_123"
+    )
+    modelo: Optional[str] = Field(
+        default=None,
+        description="Nombre del modelo Ollama a utilizar (ej: 'qwen2.5-coder:14b', 'qwen2.5-coder:32b', 'qwen3.6:35b', 'qwen2.5:7b-instruct'). Si es None, usa el modelo activo.",
+        example="qwen2.5-coder:32b"
     )
     reset_history: Optional[bool] = Field(
         default=False,
@@ -186,6 +194,33 @@ def health_check():
     }
 
 
+@app.get("/api/models", tags=["Modelos"])
+def get_models():
+    """
+    Retorna la lista de modelos de lenguaje instalados localmente en Ollama,
+    clasificados por capacidad y tamaño, junto con presets sugeridos (7B, 14B, 32B, 35B).
+    """
+    installed = get_installed_llm_models()
+    active = resolve_llm_model()
+
+    for item in installed:
+        item["is_active"] = (item["id"] == active)
+
+    presets = [
+        {"id": "qwen2.5:7b-instruct", "nombre": "Qwen 2.5 7B", "tier": "7B", "desc": "⚡ Ultra Rápido"},
+        {"id": "qwen2.5-coder:14b", "nombre": "Qwen 2.5 Coder 14B", "tier": "14B", "desc": "⚖️ Balance Óptimo"},
+        {"id": "qwen2.5-coder:32b", "nombre": "Qwen 2.5 Coder 32B", "tier": "32B", "desc": "🚀 Razonamiento Profundo"},
+        {"id": "qwen3.6:35b", "nombre": "Qwen 3.6 35B", "tier": "35B", "desc": "🧠 MoE Avanzado"},
+    ]
+
+    return {
+        "status": "success",
+        "active_model": active,
+        "models": installed,
+        "presets": presets,
+    }
+
+
 @app.post("/api/ask", response_model=QueryResponse, tags=["Consulta RAG"])
 @app.post("/api/chat", response_model=QueryResponse, tags=["Consulta RAG"])
 def ask_question(payload: QueryRequest):
@@ -193,15 +228,19 @@ def ask_question(payload: QueryRequest):
     Endpoint principal para consultar al agente RAG.
 
     Recibe la pregunta en formato JSON, consulta la base documental,
-    evalúa el contexto con el modelo local y retorna la respuesta natural,
-    fuentes de origen, fecha/hora y tiempo de respuesta.
+    evalúa el contexto con el modelo local seleccionado y retorna la respuesta natural,
+    fuentes de origen, fecha/hora y tiempo de respuesta exacto.
     """
     cleaned_question = clean_query_input(payload.pregunta)
     if not cleaned_question:
         raise HTTPException(status_code=400, detail="La pregunta no puede estar vacía.")
 
     session_id = payload.session_id or "default"
-    engine = get_or_create_session(session_id, reset=payload.reset_history)
+    engine, active_model = get_or_create_session(
+        session_id=session_id,
+        model_name=payload.modelo,
+        reset=payload.reset_history
+    )
 
     t_start = time.time()
     iso_date = datetime.now(timezone.utc).isoformat()
@@ -235,7 +274,7 @@ def ask_question(payload: QueryRequest):
             fuentes=fuentes_list,
             fecha=iso_date,
             tiempo_respuesta_segundos=elapsed,
-            modelo=resolve_llm_model(),
+            modelo=active_model,
             session_id=session_id,
         )
 

@@ -78,6 +78,7 @@ Envía una pregunta en lenguaje natural y recibe la respuesta del agente junto c
 {
   "pregunta": "¿Cuál es la duración del turno nocturno de soporte técnico?",
   "session_id": "usuario_web_123",
+  "modelo": "qwen2.5-coder:32b",
   "reset_history": false
 }
 ```
@@ -86,6 +87,7 @@ Envía una pregunta en lenguaje natural y recibe la respuesta del agente junto c
 |---|---|:---:|---|
 | `pregunta` | `string` | **Sí** | Pregunta del usuario en lenguaje natural. |
 | `session_id` | `string` | No | ID de sesión para conservar la memoria de la conversación (Default: `"default"`). |
+| `modelo` | `string` | No | Modelo específico de Ollama a utilizar (ej: `qwen2.5:7b-instruct`, `qwen2.5-coder:14b`, `qwen2.5-coder:32b`, `qwen3.6:35b`). Si se omite, usa el modelo activo por defecto. |
 | `reset_history` | `boolean` | No | Si es `true`, reinicia el historial de la conversación. |
 
 #### Respuesta Exitosa (Response JSON - Código 200):
@@ -193,6 +195,33 @@ Retorna los archivos almacenados en la carpeta `data/` del agente.
   "embeddings": "bge-m3",
   "coleccion": "local_rag_collection",
   "fragmentos_activos": 2
+}
+```
+
+---
+
+### 3.5. Listar Modelos y Presets de Inferencia: `GET /api/models`
+
+Retorna la lista de modelos de lenguaje instalados en Ollama, su tamaño en GB, tier de capacidad y presets (7B, 14B, 32B, 35B).
+
+- **URL:** `http://localhost:8000/api/models`
+- **Método:** `GET`
+
+```json
+{
+  "status": "success",
+  "active_model": "qwen2.5-coder:32b",
+  "models": [
+    { "id": "qwen2.5:7b-instruct", "tier": "7B / 8B (Rápido)", "size_gb": 4.36, "is_active": false },
+    { "id": "qwen2.5-coder:14b", "tier": "14B (Equilibrado)", "size_gb": 8.37, "is_active": false },
+    { "id": "qwen2.5-coder:32b", "tier": "32B (Razonamiento Alto)", "size_gb": 18.49, "is_active": true }
+  ],
+  "presets": [
+    { "id": "qwen2.5:7b-instruct", "nombre": "Qwen 2.5 7B", "tier": "7B", "desc": "⚡ Ultra Rápido" },
+    { "id": "qwen2.5-coder:14b", "nombre": "Qwen 2.5 Coder 14B", "tier": "14B", "desc": "⚖️ Balance Óptimo" },
+    { "id": "qwen2.5-coder:32b", "nombre": "Qwen 2.5 Coder 32B", "tier": "32B", "desc": "🚀 Razonamiento Profundo" },
+    { "id": "qwen3.6:35b", "nombre": "Qwen 3.6 35B", "tier": "35B", "desc": "🧠 MoE Avanzado" }
+  ]
 }
 ```
 

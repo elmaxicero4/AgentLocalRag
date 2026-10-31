@@ -67,6 +67,7 @@ flowchart TD
 - **Guardrail de Alcance Institucional**: Si el usuario intenta hablar de temas no documentados o externos (deportes, recetas, código externo, cultura general), el modelo detiene amablemente la conversación y redirige a las normativas de la empresa.
 - **Memoria Conversacional Continua**: Modo `condense_plus_context` que permite preguntas de seguimiento (*"¿y el turno de la mañana?", "¿con cuánta antelación debo pedirlas?"*).
 - **Auto-Indexación en Caliente**: Modificar un dato en la base de datos empresarial SQLite desencadena automáticamente la re-indexación limpia de ChromaDB y recarga la memoria del agente en menos de un segundo, sin reiniciar servidores.
+- **Selector Dinámico de Modelos y Benchmarking en Frontend**: Permite alternar en tiempo real entre modelos de 7B, 14B, 32B o 35B en cada consulta, con insignias de latencia y un laboratorio interactivo de benchmarking para medir y comparar la velocidad y precisión de dos modelos frente a una misma pregunta.
 - **Modal de Carga con Barra de Progreso**: La interfaz web muestra una barra de progreso animada en 4 etapas (*"Subiendo e Indexando"*) que se cierra automáticamente en cuanto el agente confirma la indexación.
 - **Animación Organizacional en Terminal**: El CLI interactivo despliega un árbol en vivo con spinners dinámicos y cronómetro de ejecución.
 

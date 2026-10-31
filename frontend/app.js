@@ -16,6 +16,28 @@ const backendStatusDot = document.getElementById("backendStatusDot");
 const backendStatusText = document.getElementById("backendStatusText");
 const lblModelName = document.getElementById("lblModelName");
 
+// Selector de modelos y Badges
+const selectModel = document.getElementById("selectModel");
+const modelTierBadge = document.getElementById("modelTierBadge");
+
+// Modal de Benchmark
+const btnOpenBenchmark = document.getElementById("btnOpenBenchmark");
+const benchmarkModal = document.getElementById("benchmarkModal");
+const btnCloseBenchmarkModal = document.getElementById("btnCloseBenchmarkModal");
+const selectBenchModelA = document.getElementById("selectBenchModelA");
+const selectBenchModelB = document.getElementById("selectBenchModelB");
+const inputBenchQuestion = document.getElementById("inputBenchQuestion");
+const btnRunBenchmark = document.getElementById("btnRunBenchmark");
+const benchNameA = document.getElementById("benchNameA");
+const benchTimeA = document.getElementById("benchTimeA");
+const benchBodyA = document.getElementById("benchBodyA");
+const benchNameB = document.getElementById("benchNameB");
+const benchTimeB = document.getElementById("benchTimeB");
+const benchBodyB = document.getElementById("benchBodyB");
+const benchSummaryBanner = document.getElementById("benchSummaryBanner");
+const benchSummaryText = document.getElementById("benchSummaryText");
+const benchSpeedDiffBadge = document.getElementById("benchSpeedDiffBadge");
+
 const policiesList = document.getElementById("policiesList");
 const btnRefreshPolicies = document.getElementById("btnRefreshPolicies");
 const btnForceSync = document.getElementById("btnForceSync");
@@ -58,7 +80,7 @@ const step4 = document.getElementById("step4");
 // ==============================================================================
 
 async function checkHealth() {
-  // 1. Verificar Agente RAG
+  // 1. Verificar Agente RAG y listar modelos
   try {
     const res = await fetch(`${AGENT_API_URL}/health`);
     if (res.ok) {
@@ -66,7 +88,8 @@ async function checkHealth() {
       agentStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
       agentStatusText.textContent = "Conectado";
       agentStatusText.className = "text-emerald-400 font-medium";
-      lblModelName.textContent = data.modelo || "qwen3.6:35b";
+      if (lblModelName) lblModelName.textContent = data.modelo || "qwen3.6:35b";
+      await loadAvailableModels(data.modelo);
     } else {
       throw new Error();
     }
@@ -89,15 +112,88 @@ async function checkHealth() {
     }
   } catch (e) {
     backendStatusDot.className = "w-2.5 h-2.5 rounded-full bg-red-400";
-    backendStatusText.textContent = "Sin conexión (puerto 5000)";
+    backendStatusText.textContent = "Sin conexión (puerto 5001)";
     backendStatusText.className = "text-red-400 font-medium";
     policiesList.innerHTML = `
       <div class="text-center p-4 text-xs text-red-400 bg-red-950/20 border border-red-900/40 rounded-xl">
-        Backend no detectado en el puerto 5000.<br>
+        Backend no detectado en el puerto 5001.<br>
         Inícialo con: <code class="text-slate-300">python backend/server.py</code>
       </div>
     `;
   }
+}
+
+let availableModelsList = [];
+
+async function loadAvailableModels(activeModelName) {
+  try {
+    const res = await fetch(`${AGENT_API_URL}/api/models`);
+    if (!res.ok) return;
+    const data = await res.json();
+    availableModelsList = data.models || [];
+    const active = activeModelName || data.active_model;
+
+    // Presets esenciales si no están en la lista
+    const basePresets = [
+      { id: "qwen2.5:7b-instruct", label: "⚡ Qwen 2.5 7B (Ultra Rápido)", tier: "7B" },
+      { id: "qwen2.5-coder:14b", label: "⚖️ Qwen 2.5 Coder 14B (Equilibrado)", tier: "14B" },
+      { id: "qwen2.5-coder:32b", label: "🚀 Qwen 2.5 Coder 32B (Razonamiento Alto)", tier: "32B" },
+      { id: "qwen3.6:35b", label: "🧠 Qwen 3.6 35B (MoE Profundo)", tier: "35B" },
+    ];
+
+    // Construir opciones del dropdown principal
+    const optionsHtml = basePresets.map(p => {
+      const isSelected = (p.id === active || (active && active.startsWith(p.id)));
+      return `<option value="${p.id}" ${isSelected ? "selected" : ""}>${p.label}</option>`;
+    }).join("") + (availableModelsList.filter(m => !basePresets.some(bp => bp.id === m.id)).map(m => `
+      <option value="${m.id}">${m.id} (${m.size_gb} GB - ${m.tier})</option>
+    `).join(""));
+
+    if (selectModel) {
+      selectModel.innerHTML = optionsHtml;
+      updateModelBadge();
+    }
+
+    if (selectBenchModelA) {
+      selectBenchModelA.innerHTML = optionsHtml;
+      selectBenchModelA.value = "qwen2.5:7b-instruct";
+    }
+
+    if (selectBenchModelB) {
+      selectBenchModelB.innerHTML = optionsHtml;
+      selectBenchModelB.value = "qwen2.5-coder:32b";
+    }
+
+  } catch (err) {
+    console.warn("No se pudieron cargar modelos dinámicos:", err);
+  }
+}
+
+function updateModelBadge() {
+  if (!selectModel || !modelTierBadge) return;
+  const val = selectModel.value;
+  if (val.includes("7b") || val.includes("8b")) {
+    modelTierBadge.textContent = "⚡ 7B • Ultra Rápido (<1.5s)";
+    modelTierBadge.className = "bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
+  } else if (val.includes("14b")) {
+    modelTierBadge.textContent = "⚖️ 14B • Balance Calidad/Velocidad";
+    modelTierBadge.className = "bg-blue-950/70 border border-blue-800 text-blue-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
+  } else if (val.includes("32b")) {
+    modelTierBadge.textContent = "🚀 32B • Razonamiento Alto";
+    modelTierBadge.className = "bg-cyan-950/70 border border-cyan-800 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
+  } else if (val.includes("35b")) {
+    modelTierBadge.textContent = "🧠 35B • MoE Avanzado";
+    modelTierBadge.className = "bg-purple-950/70 border border-purple-800 text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
+  } else {
+    modelTierBadge.textContent = "🤖 Modelo Local";
+    modelTierBadge.className = "bg-slate-800 border border-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
+  }
+}
+
+if (selectModel) {
+  selectModel.addEventListener("change", () => {
+    updateModelBadge();
+  });
 }
 
 
@@ -158,13 +254,15 @@ chatForm.addEventListener("submit", async (e) => {
   const question = inputQuestion.value.trim();
   if (!question) return;
 
+  const chosenModel = selectModel ? selectModel.value : null;
+
   // 1. Agregar mensaje del usuario en el chat
   appendUserMessage(question);
   inputQuestion.value = "";
   inputQuestion.focus();
 
   // 2. Mostrar burbuja de carga / pensando
-  const loadingBubbleId = appendAgentLoadingMessage();
+  const loadingBubbleId = appendAgentLoadingMessage(chosenModel);
 
   try {
     const res = await fetch(`${AGENT_API_URL}/api/ask`, {
@@ -173,6 +271,7 @@ chatForm.addEventListener("submit", async (e) => {
       body: JSON.stringify({
         pregunta: question,
         session_id: SESSION_ID,
+        modelo: chosenModel,
       })
     });
 
@@ -205,11 +304,12 @@ function appendUserMessage(text) {
   scrollToBottom();
 }
 
-function appendAgentLoadingMessage() {
+function appendAgentLoadingMessage(modelLabel) {
   const id = "loading_" + Date.now();
   const div = document.createElement("div");
   div.id = id;
   div.className = "flex items-start space-x-3 max-w-3xl";
+  const label = modelLabel || (selectModel ? selectModel.value : "modelo local");
   div.innerHTML = `
     <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-md animate-pulse">
       <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +321,7 @@ function appendAgentLoadingMessage() {
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <span class="text-slate-400 text-xs">Consultando base de datos y razonando con ${lblModelName.textContent}...</span>
+      <span class="text-slate-400 text-xs">Consultando base de datos y razonando con <strong>${escapeHtml(label)}</strong>...</span>
     </div>
   `;
   chatContainer.appendChild(div);
@@ -235,6 +335,16 @@ function replaceLoadingWithResponse(bubbleId, data) {
 
   const htmlResponse = marked.parse(data.respuesta || "");
   const timeFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const sec = data.tiempo_respuesta_segundos;
+
+  let speedBadge = "";
+  if (sec < 2.0) {
+    speedBadge = `<span class="bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-mono">⚡ ${sec}s • Ultra Rápido</span>`;
+  } else if (sec < 6.0) {
+    speedBadge = `<span class="bg-cyan-950/80 text-cyan-300 border border-cyan-800 text-[10px] px-2 py-0.5 rounded-full font-mono">⚖️ ${sec}s • Equilibrado</span>`;
+  } else {
+    speedBadge = `<span class="bg-purple-950/80 text-purple-300 border border-purple-800 text-[10px] px-2 py-0.5 rounded-full font-mono">🧠 ${sec}s • Razonamiento Profundo</span>`;
+  }
 
   // Renderizar acordeón de fuentes si existen
   let fuentesHtml = "";
@@ -276,6 +386,15 @@ function replaceLoadingWithResponse(bubbleId, data) {
     </div>
     <div class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none p-4 shadow-sm text-sm text-slate-200">
       
+      <!-- Barra superior de benchmark del mensaje -->
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-[11px]">
+        <div class="flex items-center space-x-1.5">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span class="font-mono text-cyan-300 font-bold">${escapeHtml(data.modelo)}</span>
+        </div>
+        ${speedBadge}
+      </div>
+
       <!-- Contenido de respuesta -->
       <div class="prose prose-invert prose-sm max-w-none leading-relaxed">
         ${htmlResponse}
@@ -284,12 +403,9 @@ function replaceLoadingWithResponse(bubbleId, data) {
       <!-- Fuentes -->
       ${fuentesHtml}
 
-      <!-- Metadatos de inferencia -->
+      <!-- Metadatos de inferencia en el pie -->
       <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-        <span class="flex items-center space-x-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-          <span>Modelo: <strong class="text-slate-400">${escapeHtml(data.modelo)}</strong></span>
-        </span>
+        <span>Sesión: <code class="text-slate-400">${escapeHtml(data.session_id || "default")}</code></span>
         <div class="flex items-center space-x-3">
           <span>Tiempo: <strong class="text-cyan-400">${data.tiempo_respuesta_segundos}s</strong></span>
           <span>${timeFormatted}</span>
@@ -526,6 +642,108 @@ btnRefreshPolicies.addEventListener("click", () => {
     setTimeout(() => btnRefreshPolicies.classList.remove("animate-spin"), 500);
   });
 });
+
+// ==============================================================================
+// 5. LABORATORIO DE BENCHMARKING DE MODELOS
+// ==============================================================================
+
+if (btnOpenBenchmark) {
+  btnOpenBenchmark.addEventListener("click", () => {
+    if (benchmarkModal) benchmarkModal.classList.remove("hidden");
+  });
+}
+
+if (btnCloseBenchmarkModal) {
+  btnCloseBenchmarkModal.addEventListener("click", () => {
+    if (benchmarkModal) benchmarkModal.classList.add("hidden");
+  });
+}
+
+// Botones de preguntas sugeridas para el benchmark
+document.querySelectorAll(".btn-bench-suggest").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (inputBenchQuestion) {
+      const txt = btn.textContent.trim();
+      if (txt.includes("Turno nocturno")) {
+        inputBenchQuestion.value = "¿Cuál es la duración y horario del turno nocturno de soporte técnico?";
+      } else if (txt.includes("contraseñas")) {
+        inputBenchQuestion.value = "¿Cuál es la longitud mínima de las contraseñas maestras y cada cuánto expiran?";
+      } else if (txt.includes("internet")) {
+        inputBenchQuestion.value = "¿Cuál es el valor del subsidio mensual de conectividad e internet?";
+      } else if (txt.includes("vacaciones")) {
+        inputBenchQuestion.value = "¿Cuántos días de vacaciones anuales remuneradas corresponden y con cuánta antelación deben solicitarse?";
+      } else {
+        inputBenchQuestion.value = txt;
+      }
+    }
+  });
+});
+
+if (btnRunBenchmark) {
+  btnRunBenchmark.addEventListener("click", async () => {
+    const modelA = selectBenchModelA.value;
+    const modelB = selectBenchModelB.value;
+    const question = inputBenchQuestion.value.trim();
+    if (!question) return;
+
+    benchNameA.textContent = modelA;
+    benchNameB.textContent = modelB;
+    benchTimeA.textContent = "⏱️ Evaluando...";
+    benchTimeB.textContent = "⏱️ Evaluando...";
+    benchBodyA.innerHTML = `<div class="p-4 text-center text-cyan-400 animate-pulse text-xs">⏳ Generando respuesta con ${escapeHtml(modelA)}...</div>`;
+    benchBodyB.innerHTML = `<div class="p-4 text-center text-amber-400 animate-pulse text-xs">⏳ Generando respuesta con ${escapeHtml(modelB)}...</div>`;
+    benchSummaryBanner.classList.add("hidden");
+    btnRunBenchmark.disabled = true;
+    btnRunBenchmark.classList.add("opacity-50");
+
+    try {
+      // Lanzar ambas consultas concurrentemente
+      const callA = fetch(`${AGENT_API_URL}/api/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta: question, session_id: "bench_session_a", modelo: modelA })
+      }).then(r => r.json());
+
+      const callB = fetch(`${AGENT_API_URL}/api/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta: question, session_id: "bench_session_b", modelo: modelB })
+      }).then(r => r.json());
+
+      const [resA, resB] = await Promise.all([callA, callB]);
+
+      // Renderizar resultados del Modelo A
+      const timeA = resA.tiempo_respuesta_segundos || 0;
+      benchTimeA.textContent = `⏱️ ${timeA}s`;
+      benchBodyA.innerHTML = marked.parse(resA.respuesta || "Sin respuesta");
+
+      // Renderizar resultados del Modelo B
+      const timeB = resB.tiempo_respuesta_segundos || 0;
+      benchTimeB.textContent = `⏱️ ${timeB}s`;
+      benchBodyB.innerHTML = marked.parse(resB.respuesta || "Sin respuesta");
+
+      // Comparativa y cálculo de velocidad
+      benchSummaryBanner.classList.remove("hidden");
+      if (timeA <= timeB) {
+        const ratio = (timeB / (timeA || 0.001)).toFixed(1);
+        const diff = (timeB - timeA).toFixed(2);
+        benchSummaryText.textContent = `⚡ ${modelA} fue ${ratio}x más rápido que ${modelB}`;
+        benchSpeedDiffBadge.textContent = `Diferencia: ${diff}s a favor de Modelo A`;
+      } else {
+        const ratio = (timeA / (timeB || 0.001)).toFixed(1);
+        const diff = (timeA - timeB).toFixed(2);
+        benchSummaryText.textContent = `⚡ ${modelB} fue ${ratio}x más rápido que ${modelA}`;
+        benchSpeedDiffBadge.textContent = `Diferencia: ${diff}s a favor de Modelo B`;
+      }
+
+    } catch (err) {
+      alert("Error ejecutando el benchmark: " + err.message);
+    } finally {
+      btnRunBenchmark.disabled = false;
+      btnRunBenchmark.classList.remove("opacity-50");
+    }
+  });
+}
 
 function escapeHtml(text) {
   if (!text) return "";

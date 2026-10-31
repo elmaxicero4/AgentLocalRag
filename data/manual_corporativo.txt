@@ -1,5 +1,5 @@
 # MANUAL DE POLÍTICAS Y PROCEDIMIENTOS INTERNOS - AGENTLOCALRAG
-# Exportado desde la Base de Datos Central el: 2026-10-30 14:57:42 UTC
+# Exportado desde la Base de Datos Central el: 2026-10-31 02:15:05 UTC
 
 ## 1. JORNADA LABORAL Y HORARIOS
 1.1. La jornada ordinaria de trabajo es de lunes a viernes en horario flexible, con presencia requerida entre las 10:00 y las 16:00 horas (Zona Horaria GMT-5).

@@ -3,6 +3,7 @@ core_setup.py - Inicialización modular de componentes: LLM, Embeddings y Chroma
 """
 
 import sys
+from typing import Optional, List, Dict
 import chromadb
 from llama_index.core import Settings
 from llama_index.core.node_parser import SentenceSplitter
@@ -12,11 +13,61 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 import config
 
 
-def resolve_llm_model() -> str:
-    """Verifica si el modelo configurado existe en Ollama; si no, aplica fallback inteligente."""
-    requested = config.LLM_MODEL
+def get_installed_llm_models() -> List[Dict[str, any]]:
+    """
+    Obtiene la lista de modelos instalados en Ollama, excluyendo modelos de embeddings,
+    con metadata de tamaño y categoría para el selector de modelos.
+    """
     try:
         import ollama
+
+        client = ollama.Client(host=config.OLLAMA_BASE_URL)
+        installed = client.list().models
+        models_list = []
+
+        for m in installed:
+            name = m.model
+            # Excluir modelos de embeddings conocidos
+            if "bge" in name.lower() or "embed" in name.lower():
+                continue
+
+            size_gb = round(getattr(m, "size", 0) / (1024**3), 2)
+
+            # Clasificación de tamaño/tier
+            tier = "Desconocido"
+            if ":7b" in name.lower() or "-7b" in name.lower() or ":8b" in name.lower():
+                tier = "7B / 8B (Rápido)"
+            elif ":14b" in name.lower() or "-14b" in name.lower():
+                tier = "14B (Equilibrado)"
+            elif ":32b" in name.lower() or "-32b" in name.lower():
+                tier = "32B (Razonamiento Alto)"
+            elif ":35b" in name.lower() or "-35b" in name.lower():
+                tier = "35B (MoE Profundo)"
+            elif ":3b" in name.lower():
+                tier = "3B (Ultra Ligero)"
+            elif ":26b" in name.lower():
+                tier = "26B (Avanzado)"
+
+            models_list.append({
+                "id": name,
+                "nombre": name,
+                "tier": tier,
+                "size_gb": size_gb,
+                "is_active": False,
+            })
+
+        return models_list
+    except Exception as e:
+        print(f"[Core] Error al listar modelos de Ollama: {e}", file=sys.stderr)
+        return []
+
+
+def resolve_llm_model(model_override: Optional[str] = None) -> str:
+    """Verifica si el modelo configurado o solicitado existe en Ollama; si no, aplica fallback inteligente."""
+    requested = model_override or config.LLM_MODEL
+    try:
+        import ollama
+
         client = ollama.Client(host=config.OLLAMA_BASE_URL)
         installed_models = [m.model for m in client.list().models]
         if any(m == requested or m.startswith(requested + ":") for m in installed_models):
@@ -33,7 +84,7 @@ def resolve_llm_model() -> str:
         for fb in fallbacks:
             if any(m == fb or m.startswith(fb + ":") for m in installed_models):
                 print(
-                    f"\n⚠️  [AVISO OLLAMA] El modelo configurado '{requested}' no está descargado todavía en tu Ollama.\n"
+                    f"\n⚠️  [AVISO OLLAMA] El modelo '{requested}' no está descargado en tu Ollama.\n"
                     f"👉 Para descargarlo ejecuta: ollama pull {requested}\n"
                     f"✅ Usando automáticamente el modelo instalado: '{fb}' para continuar sin errores.\n",
                     file=sys.stderr,
@@ -44,9 +95,9 @@ def resolve_llm_model() -> str:
     return requested
 
 
-def get_llm() -> Ollama:
+def get_llm(model_name: Optional[str] = None) -> Ollama:
     """Configura y retorna la instancia del LLM local vía Ollama."""
-    active_model = resolve_llm_model()
+    active_model = resolve_llm_model(model_name)
     return Ollama(
         model=active_model,
         base_url=config.OLLAMA_BASE_URL,
