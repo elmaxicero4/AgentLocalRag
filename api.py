@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 import config
 from ingest import ingest_documents
 from query import load_chat_engine, clean_query_input, should_display_sources
+from core_setup import resolve_llm_model
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -178,7 +179,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "modelo": config.LLM_MODEL,
+        "modelo": resolve_llm_model(),
         "embeddings": config.EMBEDDING_MODEL_OLLAMA if config.EMBEDDING_PROVIDER == "ollama" else config.EMBEDDING_MODEL_HF,
         "coleccion": config.CHROMA_COLLECTION_NAME,
         "fragmentos_activos": total_indexed_docs,
@@ -234,7 +235,7 @@ def ask_question(payload: QueryRequest):
             fuentes=fuentes_list,
             fecha=iso_date,
             tiempo_respuesta_segundos=elapsed,
-            modelo=config.LLM_MODEL,
+            modelo=resolve_llm_model(),
             session_id=session_id,
         )
 

@@ -12,10 +12,43 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 import config
 
 
+def resolve_llm_model() -> str:
+    """Verifica si el modelo configurado existe en Ollama; si no, aplica fallback inteligente."""
+    requested = config.LLM_MODEL
+    try:
+        import ollama
+        client = ollama.Client(host=config.OLLAMA_BASE_URL)
+        installed_models = [m.model for m in client.list().models]
+        if any(m == requested or m.startswith(requested + ":") for m in installed_models):
+            return requested
+
+        # Lista de modelos de respaldo instalados con alta capacidad de razonamiento
+        fallbacks = [
+            "qwen2.5-coder:32b",
+            "qwen2.5-coder:14b",
+            "qwen3:8b",
+            "qwen2.5:7b-instruct",
+            "qwen2.5-coder:7b",
+        ]
+        for fb in fallbacks:
+            if any(m == fb or m.startswith(fb + ":") for m in installed_models):
+                print(
+                    f"\n⚠️  [AVISO OLLAMA] El modelo configurado '{requested}' no está descargado todavía en tu Ollama.\n"
+                    f"👉 Para descargarlo ejecuta: ollama pull {requested}\n"
+                    f"✅ Usando automáticamente el modelo instalado: '{fb}' para continuar sin errores.\n",
+                    file=sys.stderr,
+                )
+                return fb
+    except Exception:
+        pass
+    return requested
+
+
 def get_llm() -> Ollama:
     """Configura y retorna la instancia del LLM local vía Ollama."""
+    active_model = resolve_llm_model()
     return Ollama(
-        model=config.LLM_MODEL,
+        model=active_model,
         base_url=config.OLLAMA_BASE_URL,
         temperature=config.LLM_TEMPERATURE,
         request_timeout=config.REQUEST_TIMEOUT,
