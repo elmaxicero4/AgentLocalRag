@@ -171,7 +171,7 @@ Clona el repositorio e instala los paquetes en un entorno virtual:
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/JoseArroyave/AgentLocalRag.git
+git clone https://github.com/elmaxicero4/AgentLocalRag.git
 cd AgentLocalRag
 
 # 2. Crear y activar el entorno virtual
