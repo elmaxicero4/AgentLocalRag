@@ -1,0 +1,26 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Base vectorial persistente local
+chroma_db/
+
+# Python bytecode y caché
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Archivos de sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Bases de datos locales
+*.db
+*.sqlite
+*.sqlite3
