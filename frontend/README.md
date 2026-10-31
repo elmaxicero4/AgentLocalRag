@@ -10,7 +10,7 @@ Interfaz web moderna, reactiva y desacoplada para interactuar con el **Agente RA
    - Conexión directa vía HTTP REST con `POST http://localhost:8000/api/ask`.
    - Renderizado dinámico de respuestas en Markdown con citas textuales.
    - Visualización de fuentes documentales consultadas (nombre de archivo, fragmento y score de similitud).
-   - Metadatos en tiempo real: modelo activo (`qwen2.5-coder:14b`), tiempo exacto de inferencia (segundos) y hora UTC.
+   - Metadatos en tiempo real: modelo activo (`qwen3.6:35b`), tiempo exacto de inferencia (segundos) y hora UTC.
    - Memoria conversacional por sesión.
 
 2. **📋 Panel de Políticas en Base de Datos**:

@@ -66,7 +66,7 @@ async function checkHealth() {
       agentStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
       agentStatusText.textContent = "Conectado";
       agentStatusText.className = "text-emerald-400 font-medium";
-      lblModelName.textContent = data.modelo || "qwen2.5-coder:14b";
+      lblModelName.textContent = data.modelo || "qwen3.6:35b";
     } else {
       throw new Error();
     }

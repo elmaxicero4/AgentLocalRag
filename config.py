@@ -24,8 +24,8 @@ CHROMA_PERSIST_DIR.mkdir(parents=True, exist_ok=True)
 # ==============================================================================
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-# LLM: Modelo local vía Ollama. Se recomienda qwen2.5-coder:14b para mayor capacidad de razonamiento
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder:14b")
+# LLM: Modelo local vía Ollama. Qwen 3.6 de 35B (MoE) para máxima capacidad de razonamiento
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3.6:35b")
 LLM_TEMPERATURE = 0.0  # Determinismo absoluto para mitigar alucinaciones
 REQUEST_TIMEOUT = 180.0  # Segundos de espera para inferencias locales
 

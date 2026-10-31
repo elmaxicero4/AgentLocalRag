@@ -45,7 +45,7 @@ flowchart TD
     end
 
     subgraph LocalAI["🧠 Inferencia Local (Ollama)"]
-        LLM["Qwen 2.5 Coder 14B\n(temp=0.0)"]
+        LLM["Qwen 3.6 35B\n(temp=0.0)"]
         Embed["BGE-M3\n(1024 dims)"]
     end
 
@@ -114,7 +114,7 @@ El sistema utiliza dos modelos complementarios ejecutados de manera 100% local m
 
 | Rol | Modelo Recomendado | Justificación |
 |---|---|---|
-| **LLM (Razonamiento & Síntesis)** | `qwen2.5-coder:14b` | Modelo de 14.8B de parámetros con excelente capacidad de síntesis, estructuración de manuales y respeto riguroso de guardrails sin paralizarse. |
+| **LLM (Razonamiento & Síntesis)** | `qwen3.6:35b` | Modelo Mixture-of-Experts (MoE) de 35.5B de parámetros (~3B activos) con extraordinaria capacidad de razonamiento profundo, fidelidad a directivas y alta velocidad. |
 | **Embeddings Semánticos** | `bge-m3` | Estado del arte en recuperación densa multilingüe con espacio vectorial de 1024 dimensiones. |
 
 ### Cómo descargarlos en tu máquina:
@@ -122,14 +122,14 @@ El sistema utiliza dos modelos complementarios ejecutados de manera 100% local m
 Asegúrate de tener [Ollama](https://ollama.com/) instalado y en ejecución en tu sistema:
 
 ```bash
-# 1. Descargar el modelo LLM de 14B
-ollama pull qwen2.5-coder:14b
+# 1. Descargar el modelo LLM Qwen 3.6 de 35B
+ollama pull qwen3.6:35b
 
 # 2. Descargar el modelo de Embeddings BGE-M3
 ollama pull bge-m3
 ```
 
-*(Opcional: Si cuentas con recursos limitados de hardware, también puedes utilizar `qwen2.5:7b-instruct` ejecutando `ollama pull qwen2.5:7b-instruct`).*
+*(Opcional: Si cuentas con recursos limitados o prefieres un modelo denso, también puedes utilizar `qwen2.5-coder:32b`, `qwen2.5-coder:14b` o `qwen2.5:7b-instruct`).*
 
 ---
 
@@ -144,7 +144,7 @@ Toda la parametrización de modelos se centraliza en el archivo [`config.py`](co
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # LLM: Modelo local vía Ollama
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5-coder:14b")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen3.6:35b")
 LLM_TEMPERATURE = 0.0      # Determinismo absoluto para mitigar alucinaciones
 REQUEST_TIMEOUT = 180.0    # Segundos de espera para inferencias locales
 
@@ -283,7 +283,7 @@ python query.py "¿Cuál es la duración del turno nocturno de soporte técnico?
   ],
   "fecha": "2026-10-30T14:39:00.069926+00:00",
   "tiempo_respuesta_segundos": 2.275,
-  "modelo": "qwen2.5-coder:14b",
+  "modelo": "qwen3.6:35b",
   "session_id": "usuario_frontend_01"
 }
 ```

@@ -23,7 +23,7 @@ flowchart LR
     subgraph AgenteRAG["🤖 Agente RAG Local (Puerto 8000)"]
         API["FastAPI (api.py / app.py)"]
         Chroma[("ChromaDB\nBase Vectorial")]
-        Ollama["Ollama\n(Qwen 14B + BGE-M3)"]
+        Ollama["Ollama\n(Qwen 3.6 35B + BGE-M3)"]
     end
 
     UI -->|"1. Consultas y Preguntas"| API
@@ -103,7 +103,7 @@ Envía una pregunta en lenguaje natural y recibe la respuesta del agente junto c
   ],
   "fecha": "2026-10-30T14:39:00.069926+00:00",
   "tiempo_respuesta_segundos": 2.275,
-  "modelo": "qwen2.5-coder:14b",
+  "modelo": "qwen3.6:35b",
   "session_id": "usuario_web_123"
 }
 ```
@@ -189,7 +189,7 @@ Retorna los archivos almacenados en la carpeta `data/` del agente.
 {
   "status": "healthy",
   "timestamp": "2026-10-30T14:39:00.067580+00:00",
-  "modelo": "qwen2.5-coder:14b",
+  "modelo": "qwen3.6:35b",
   "embeddings": "bge-m3",
   "coleccion": "local_rag_collection",
   "fragmentos_activos": 2
