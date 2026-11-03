@@ -63,6 +63,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
 
+  <!-- Mermaid.js para Diagramas Entidad-Relación y Arquitectura -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      if (typeof mermaid !== "undefined") {
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+      }
+    });
+  </script>
+
   <style>
     body { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -119,6 +129,9 @@
       <div class="flex items-center space-x-3 text-xs">
         <a href="#ai-prompt" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
           Prompt para IA
+        </a>
+        <a href="#database-er" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
+          Modelo BD (ER)
         </a>
         <a href="#playground" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
           Playground
@@ -365,6 +378,135 @@
           
           <div class="rounded-lg border border-zinc-200 bg-white p-3 text-[11px] text-zinc-600 font-mono shadow-xs">
             💡 <strong>Tip para React:</strong> Puedes desestructurar directamente con: <code class="text-zinc-950 font-bold">const { data, metadata } = await res.json();</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================================
+         SHADCN CARD: MODELO ENTIDAD-RELACIÓN (ER) DE LA BASE DE DATOS (CRITERIO 4)
+    ============================================================================== -->
+    <section id="database-er" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="inline-flex items-center rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+              CRITERIO 4 • RÚBRICA KODO TAKAI
+            </span>
+            <span class="text-xs text-zinc-400 font-mono">SQLite (ACID) + ChromaDB (Vectorial)</span>
+          </div>
+          <h2 class="text-lg font-bold tracking-tight text-zinc-950 dark:text-zinc-50 mt-1">
+            🗄️ Modelo Entidad-Relación (ER) de la Base de Datos
+          </h2>
+          <p class="text-xs text-zinc-600 dark:text-zinc-400">
+            Diseño normalizado con integridad referencial forzada (<code class="text-zinc-900 font-mono">PRAGMA foreign_keys = ON;</code>), índices compuestos de alto rendimiento y persistencia semántica dual.
+          </p>
+        </div>
+      </div>
+
+      <!-- Diagrama Visual Mermaid -->
+      <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 shadow-xs space-y-4 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 pb-2.5 text-xs font-mono text-zinc-500">
+          <span class="font-bold text-zinc-900 dark:text-zinc-100">Diagrama Entidad-Relación (Relaciones 1:N & Llaves Foráneas)</span>
+          <span class="text-[11px] text-zinc-400">7 Entidades Principales</span>
+        </div>
+        
+        <div class="overflow-x-auto flex justify-center py-2 bg-zinc-50/50 dark:bg-zinc-950/40 rounded-lg p-3">
+          <pre class="mermaid text-xs font-mono">
+erDiagram
+    USUARIOS ||--o{ USUARIO_SESIONES : "inicia (1:N)"
+    USUARIOS ||--o{ USUARIO_EVENTOS : "genera (1:N)"
+    USUARIOS ||--o{ TRANSLOGIX_USER_MEMORY : "vectoriza (1:N)"
+    
+    USUARIOS {
+        string uid PK "usr_hex inmutable"
+        string email UK "Correo único verificado"
+        string nombre "Nombre completo"
+        string empresa "Razón social o Particular"
+        string password_hash "PBKDF2-HMAC-SHA256"
+        string salt "Sal criptográfica 16B"
+        datetime fecha_registro "ISO 8601 UTC"
+        datetime ultimo_login "ISO 8601 UTC"
+    }
+
+    USUARIO_SESIONES {
+        string token PK "tlx_tok_hex Bearer"
+        string uid FK "Ref -> USUARIOS(uid)"
+        datetime fecha_creacion "Inicio de sesión"
+        datetime fecha_expiracion "Vigencia 30 días"
+    }
+
+    USUARIO_EVENTOS {
+        int id PK "Autoincrement"
+        string uid FK "Ref -> USUARIOS(uid)"
+        string tipo_evento "COTIZACION_INCOMPLETA"
+        string descripcion "Detalle de la acción"
+        json metadatos_json "Payload origen destino peso valor"
+        datetime timestamp "Fecha y hora del evento"
+    }
+
+    TRANSLOGIX_USER_MEMORY {
+        string id PK "uuid v4"
+        string uid FK "Ref -> USUARIOS(uid)"
+        string tipo_evento "Tag comportamiento"
+        vector embedding "1024 dims bge-m3"
+        string documento "Texto semántico recuperable"
+        datetime timestamp "Fecha indexación"
+    }
+
+    COLOMBIA_MUNICIPIOS {
+        int id PK "Autoincrement"
+        string codigo_dane "Código DANE 5 dígitos"
+        string municipio "Nombre cabecera municipal"
+        string departamento "32 departamentos y D.C."
+        string region "Andina Caribe Pacífica"
+        string tipo_cobertura "Urbana Zonal Especial"
+        string tiempo_entrega_std "24h 48h 72h"
+        string hub_asignado "Hub de consolidación"
+        boolean servicio_refrigerado "Cadena de frío"
+        boolean same_day "Entrega mismo día"
+    }
+
+    DESTINOS_INTERNACIONALES {
+        int id PK "Autoincrement"
+        string codigo_iso PK "ISO 3166-1 alpha-2"
+        string pais "País destino"
+        string continente "América Europa Asia"
+        string tiempo_entrega "Tiempo estimado courier"
+        string hub_salida "BOG o MDE"
+        string regimen_aduanero "Regulación DIAN"
+        boolean activo "Disponibilidad"
+    }
+
+    POLITICAS {
+        int id PK "Autoincrement"
+        string seccion "Código oficial TLX-03"
+        string titulo "Título del módulo"
+        string contenido "Texto legal y operativo"
+        datetime fecha_actualizacion "Última sincronización"
+    }
+          </pre>
+        </div>
+
+        <!-- Tabla Resumen de Integridad e Índices -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-xs">
+          <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40">
+            <strong class="text-zinc-900 dark:text-zinc-100 block mb-1">🔗 Integridad Referencial</strong>
+            <p class="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+              Llaves foráneas activas (<code class="font-mono">PRAGMA foreign_keys = ON;</code>). Cada sesión y evento se vincula estrictamente a un <code class="font-mono">uid</code> válido.
+            </p>
+          </div>
+          <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40">
+            <strong class="text-zinc-900 dark:text-zinc-100 block mb-1">⚡ 9 Índices de Rendimiento</strong>
+            <p class="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+              Consultas en <code class="font-mono">O(log n)</code> mediante índices compuestos en emails, tokens, departamentos y eventos de cotizaciones incompletas.
+            </p>
+          </div>
+          <div class="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/40">
+            <strong class="text-zinc-900 dark:text-zinc-100 block mb-1">🧬 Persistencia Dual</strong>
+            <p class="text-zinc-600 dark:text-zinc-400 text-[11px] leading-relaxed">
+              Combinación de SQLite (datos transaccionales exactos) y ChromaDB (embeddings semánticos con <code class="font-mono">bge-m3</code>) asociados por UID.
+            </p>
           </div>
         </div>
       </div>

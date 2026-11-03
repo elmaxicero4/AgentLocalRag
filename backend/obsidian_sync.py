@@ -215,6 +215,7 @@ tags: [dashboard, metrics, translogix]
 
 ## 🧭 Vistas y Secciones del Vault
 
+- [[modelo-entidad-relacion]] — Modelo Entidad-Relación (ER) y arquitectura de integridad de datos
 - [[agente-config]] — Configuración de modelos Ollama, endpoints y arquitectura
 - [[usuarios-y-sesiones]] — Directorio detallado de usuarios registrados y sesiones
 - [[cotizaciones-incompletas-y-memoria]] — Envíos no completados guardados en la memoria episódica

@@ -417,3 +417,95 @@ Obsidian Vault/
 - **URI Obsidian Dashboard:** `obsidian://open?vault=Obsidian%20Vault&file=agentes%2Ftranslogix%2Fdashboard`
 - **URI Canvas Arquitectura:** `obsidian://open?vault=Obsidian%20Vault&file=canvas%2Ftranslogix-arquitectura.canvas`
 - En el portal web, haz clic en el botón **`🟣 Obsidian`** de la barra superior o en el modal de tu historial para saltar directo a la app.
+
+---
+
+## 🗄️ 10. Representación del Modelo Entidad-Relación (ER) de la Base de Datos
+
+El diseño de la base de datos de TransLogix Express combina un **modelo relacional normalizado en SQLite** (con llaves foráneas e integridad referencial forzada) y un **almacén vectorial en ChromaDB** vinculado conceptualmente por el identificador único `uid`:
+
+```mermaid
+erDiagram
+    USUARIOS ||--o{ USUARIO_SESIONES : "inicia (1:N)"
+    USUARIOS ||--o{ USUARIO_EVENTOS : "genera (1:N)"
+    USUARIOS ||--o{ TRANSLOGIX_USER_MEMORY : "vectoriza (1:N)"
+    
+    USUARIOS {
+        string uid PK "usr_<hex> identificador inmutable"
+        string email UK "Correo único verificado"
+        string nombre "Nombre completo del usuario"
+        string empresa "Razón social o Particular"
+        string password_hash "PBKDF2-HMAC-SHA256 (100k iteraciones)"
+        string salt "Sal criptográfica aleatoria 16 bytes"
+        datetime fecha_registro "ISO 8601 UTC"
+        datetime ultimo_login "ISO 8601 UTC"
+    }
+
+    USUARIO_SESIONES {
+        string token PK "tlx_tok_<hex> Token Bearer"
+        string uid FK "Ref -> USUARIOS(uid)"
+        datetime fecha_creacion "Inicio de sesión"
+        datetime fecha_expiracion "Vigencia de 30 días"
+    }
+
+    USUARIO_EVENTOS {
+        int id PK "Autoincrement"
+        string uid FK "Ref -> USUARIOS(uid)"
+        string tipo_evento "COTIZACION_INCOMPLETA, PQRS, TMS"
+        string descripcion "Detalle de la acción en la web"
+        json metadatos_json "Payload: origen, destino, peso, valor"
+        datetime timestamp "Fecha y hora del evento"
+    }
+
+    TRANSLOGIX_USER_MEMORY {
+        string id PK "uuid v4 (ChromaDB)"
+        string uid FK "Ref -> USUARIOS(uid)"
+        string tipo_evento "Tag de comportamiento"
+        vector embedding "1024 dimensiones (bge-m3)"
+        string documento "Texto semántico recuperable por IA"
+        datetime timestamp "Fecha de indexación"
+    }
+
+    COLOMBIA_MUNICIPIOS {
+        int id PK "Autoincrement"
+        string codigo_dane "Código DANE 5 dígitos"
+        string municipio "Nombre de cabecera municipal"
+        string departamento "32 departamentos + Bogotá D.C."
+        string region "Andina, Caribe, Pacífica, etc."
+        string tipo_cobertura "Urbana Principal, Zonal, Especial"
+        string tiempo_entrega_std "24h, 48h, 72h"
+        string hub_asignado "Hub de consolidación"
+        boolean servicio_refrigerado "Cadena de frío (0/1)"
+        boolean same_day "Entrega mismo día (0/1)"
+    }
+
+    DESTINOS_INTERNACIONALES {
+        int id PK "Autoincrement"
+        string codigo_iso PK "ISO 3166-1 alpha-2"
+        string pais "Nombre del país destino"
+        string continente "América, Europa, Asia"
+        string tiempo_entrega "Tiempo estimado courier"
+        string hub_salida "BOG o MDE"
+        string regimen_aduanero "Regulación DIAN"
+        boolean activo "Disponibilidad de ruta"
+    }
+
+    POLITICAS {
+        int id PK "Autoincrement"
+        string seccion "Código oficial (ej: TLX-03)"
+        string titulo "Título del módulo normativo"
+        string contenido "Texto legal y operativo"
+        datetime fecha_actualizacion "Última sincronización"
+    }
+```
+
+### 📋 Diccionario de Datos y Garantías de Integridad (Criterio 4 de la Rúbrica)
+1. **Integridad Referencial Activada:** SQLite opera con `PRAGMA foreign_keys = ON;`. Si se elimina o modifica un usuario, las sesiones y eventos respetan la integridad referencial.
+2. **Índices de Alto Rendimiento ($O(\log n)$):**
+   - `idx_usuarios_email`: Búsqueda instantánea de credenciales en login.
+   - `idx_sesiones_token`: Resolución de tokens Bearer en cada request sin escanear la tabla.
+   - `idx_eventos_uid_tipo`: Filtrado ultrarrápido de cotizaciones incompletas por usuario.
+   - `idx_municipios_depto` & `idx_municipios_nombre`: Autocompletado geográfico en milisegundos.
+3. **Persistencia Dual Relacional-Vectorial:**
+   - La tabla relacional `usuario_eventos` conserva los registros exactos auditables (origen, destino, peso, valor declarado).
+   - La colección vectorial `translogix_user_memory` en ChromaDB almacena las representaciones densas con `bge-m3` vinculadas mediante el metadato `uid`, permitiendo a la IA recuperar intenciones previas mediante búsqueda semántica difusa.
