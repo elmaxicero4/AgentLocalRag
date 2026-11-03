@@ -444,6 +444,8 @@ def get_models():
         item["is_active"] = (item["id"] == active)
 
     presets = [
+        {"id": "llama3.2:1b", "nombre": "Llama 3.2 1B (Meta)", "tier": "1B", "desc": "⚡ 1B Meta (Ultra Rápido / 1.3GB)"},
+        {"id": "llama3.2:3b", "nombre": "Llama 3.2 3B (Meta)", "tier": "3B", "desc": "🍃 3B Meta (Ligero / 2.0GB)"},
         {"id": "qwen2.5:1.5b", "nombre": "Qwen 2.5 1.5B", "tier": "1.5B", "desc": "⚡ 1.5B (Ultra Rápido / 986MB)"},
         {"id": "qwen2.5:3b", "nombre": "Qwen 2.5 3B", "tier": "3B", "desc": "🍃 3B (Ligero CPU / 1.9GB)"},
         {"id": "qwen2.5:7b-instruct", "nombre": "Qwen 2.5 7B", "tier": "7B", "desc": "⚡ 7B (Rápido / 4.7GB)"},

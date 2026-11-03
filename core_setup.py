@@ -35,8 +35,8 @@ def get_installed_llm_models() -> List[Dict[str, any]]:
 
             # Clasificación de tamaño/tier
             tier = "Desconocido"
-            if ":1.5b" in name.lower():
-                tier = "1.5B (Ultra Rápido / Mínimo Consumo)"
+            if ":1b" in name.lower() or ":1.5b" in name.lower():
+                tier = "1B / 1.5B (Ultra Rápido / Mínimo Consumo)"
             elif ":3b" in name.lower():
                 tier = "3B (Ligero / Bajo Consumo)"
             elif ":7b" in name.lower() or "-7b" in name.lower() or ":8b" in name.lower():
@@ -79,11 +79,13 @@ def resolve_llm_model(model_override: Optional[str] = None) -> str:
         fallbacks = [
             "qwen2.5-coder:32b",
             "qwen2.5-coder:14b",
+            "llama3.2:3b",
+            "qwen2.5:3b",
+            "llama3.2:1b",
+            "qwen2.5:1.5b",
             "qwen3:8b",
             "qwen2.5:7b-instruct",
             "qwen2.5-coder:7b",
-            "qwen2.5:3b",
-            "qwen2.5:1.5b",
         ]
         for fb in fallbacks:
             if any(m == fb or m.startswith(fb + ":") for m in installed_models):

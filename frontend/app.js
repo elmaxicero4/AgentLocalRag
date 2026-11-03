@@ -1558,7 +1558,8 @@ async function loadAvailableModels() {
         const opt = document.createElement("option");
         opt.value = m.id;
         let icon = "⚡";
-        if (m.id.includes("1.5b")) icon = "⚡";
+        if (m.id.includes("llama")) icon = "🦙";
+        else if (m.id.includes("1.5b") || m.id.includes("1b")) icon = "⚡";
         else if (m.id.includes("3b")) icon = "🍃";
         else if (m.id.includes("14b")) icon = "⚖️";
         else if (m.id.includes("32b")) icon = "🚀";
