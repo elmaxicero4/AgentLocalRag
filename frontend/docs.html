@@ -213,38 +213,86 @@
     </div>
 
     <!-- ==============================================================================
-         SHADCN CARD: PROMPT LISTO PARA AGENTES DE IA (CURSOR / CLAUDE / ANTIGRAVITY)
+         SHADCN CARDS: PROMPTS OFICIALES DEL SISTEMA & INTEGRACIÓN
     ============================================================================== -->
-    <section id="ai-prompt" class="space-y-3">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold tracking-tight text-zinc-950 flex items-center gap-2">
-            <span>🤖 Prompt para Agentes de IA</span>
-            <span class="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-mono text-zinc-700">
-              Cursor • Antigravity • Claude Code
-            </span>
-          </h2>
-          <p class="text-xs text-zinc-500">Copia y pega este bloque en el chat de tu agente de código para que integre la API en tu frontend.</p>
+    <section id="ai-prompt" class="space-y-6">
+      
+      <!-- PROMPT 1: PROMPT DE INTEGRACIÓN FRONTEND PARA AGENTES DE CÓDIGO -->
+      <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 shadow-xs space-y-3.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="inline-flex items-center rounded-md border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 text-[10px] font-mono font-semibold text-indigo-700 dark:text-indigo-300">
+                PROMPT 1 • AGENTES DE CÓDIGO
+              </span>
+              <span class="text-xs text-zinc-400 font-mono">Cursor • Antigravity • Claude Code • Copilot</span>
+            </div>
+            <h2 class="text-base font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+              Prompt de Integración del Agente Autónomo TransLogix Express
+            </h2>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              <strong>Qué hace este prompt:</strong> Instruye a un agente desarrollador de IA para que conecte cualquier interfaz web al backend unificado de TransLogix Express. Configura el motor de <em>Cursor Virtual Autónomo</em> en el DOM (60 FPS), el consumo de microservicios logísticos (cotizador volumétrico con divisor 4000 cm³/kg, tracking TMS en vivo, radicación de PQRS, verificación de mercancías peligrosas), la base de datos geográfica de los 32 departamentos y la autenticación con memoria episódica.
+            </p>
+          </div>
+          <button onclick="copyAiPrompt()" class="h-8 inline-flex items-center justify-center rounded-md bg-zinc-950 dark:bg-zinc-100 px-3.5 text-xs font-medium text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-xs gap-1.5 active:scale-95 shrink-0 self-start sm:self-center">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="btnCopyPromptLabel">Copiar Prompt</span>
+          </button>
         </div>
-        <button onclick="copyAiPrompt()" class="h-8 inline-flex items-center justify-center rounded-md bg-zinc-900 px-3 text-xs font-medium text-white hover:bg-zinc-800 transition-colors shadow-sm gap-1.5 active:scale-95">
-          <svg class="w-3.5 h-3.5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-          <span id="btnCopyPromptLabel">Copiar Prompt</span>
-        </button>
+
+        <!-- shadcn Code Card con Inyección Dinámica de URL -->
+        <div class="rounded-lg border border-zinc-800 bg-zinc-950 shadow-xs overflow-hidden">
+          <div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4 py-2 text-xs font-mono text-zinc-400">
+            <div class="flex items-center space-x-2">
+              <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>prompt_integracion_frontend.md</span>
+            </div>
+            <span class="text-[11px] text-zinc-400 font-mono">Inyección dinámica con URL activa</span>
+          </div>
+          <div class="p-4 overflow-x-auto text-xs font-mono max-h-72 overflow-y-auto">
+            <pre><code id="aiPromptCodeDisplay" class="language-markdown"></code></pre>
+          </div>
+        </div>
       </div>
 
-      <!-- shadcn Code Card -->
-      <div class="rounded-xl border border-zinc-800 bg-zinc-950 shadow-sm overflow-hidden">
-        <div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-mono text-zinc-400">
-          <div class="flex items-center space-x-2">
-            <span class="h-2 w-2 rounded-full bg-zinc-600"></span>
-            <span>ai_prompt.md</span>
+      <!-- PROMPT 2: SYSTEM PROMPT OFICIAL DE TRANSLOGIX AI -->
+      <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-5 shadow-xs space-y-3.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-3">
+          <div class="space-y-1">
+            <div class="flex items-center space-x-2">
+              <span class="inline-flex items-center rounded-md border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 text-[10px] font-mono font-semibold text-purple-700 dark:text-purple-300">
+                PROMPT 2 • SYSTEM PROMPT BACKEND
+              </span>
+              <span class="text-xs text-zinc-400 font-mono">Módulo 14 — Caso KODO TAKAI 2026</span>
+            </div>
+            <h2 class="text-base font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+              System Prompt Oficial de TransLogix AI (Directivas de Razonamiento y Cero Alucinación)
+            </h2>
+            <p class="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              <strong>Qué hace este prompt:</strong> Establece las directivas de razonamiento estricto para el modelo LLM local (Ollama `qwen2.5-coder:14b` o `7b`). Garantiza que el asistente nunca invente tarifas, cobertura ni estados de guía; exige las 5 variables obligatorias para cotizar (origen, destino, dimensiones en cm, peso real y valor declarado); calcula el peso volumétrico con divisor 4000 cm³/kg; rechaza mercancías peligrosas no autorizadas y transfiere inmediatamente a asesores humanos cuando una reclamación supere $5.000.000 COP o existan riesgos legales.
+            </p>
           </div>
-          <span class="text-[11px] text-zinc-400 font-mono">Inyección dinámica con la URL activa</span>
+          <button onclick="copySystemPrompt()" class="h-8 inline-flex items-center justify-center rounded-md bg-zinc-950 dark:bg-zinc-100 px-3.5 text-xs font-medium text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-xs gap-1.5 active:scale-95 shrink-0 self-start sm:self-center">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="btnCopySysPromptLabel">Copiar System Prompt</span>
+          </button>
         </div>
-        <div class="p-4 overflow-x-auto text-xs font-mono max-h-72 overflow-y-auto">
-          <pre><code id="aiPromptCodeDisplay" class="language-markdown"></code></pre>
+
+        <!-- shadcn Code Card con System Prompt -->
+        <div class="rounded-lg border border-zinc-800 bg-zinc-950 shadow-xs overflow-hidden">
+          <div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/90 px-4 py-2 text-xs font-mono text-zinc-400">
+            <div class="flex items-center space-x-2">
+              <span class="h-2 w-2 rounded-full bg-purple-500"></span>
+              <span>14_prompt_del_sistema.md</span>
+            </div>
+            <span class="text-[11px] text-zinc-400 font-mono">Directiva LlamaIndex & Ollama</span>
+          </div>
+          <div class="p-4 overflow-x-auto text-xs font-mono max-h-72 overflow-y-auto">
+            <pre><code id="sysPromptCodeDisplay" class="language-markdown"></code></pre>
+          </div>
         </div>
       </div>
+
     </section>
 
     <!-- ==============================================================================
@@ -609,6 +657,7 @@
       await checkHealth();
       await loadModels();
       renderAiPrompt();
+      renderSystemPrompt();
       renderCodeSnippet();
     });
 
@@ -650,6 +699,7 @@
       inputActiveBaseUrl.value = activeBaseUrl;
       playgroundTargetUrl.textContent = activeBaseUrl;
       renderAiPrompt();
+      renderSystemPrompt();
       renderCodeSnippet();
       checkHealth();
     }
@@ -673,39 +723,94 @@
 
     function renderAiPrompt() {
       const base = activeBaseUrl;
-      const promptText = `Actúa como desarrollador frontend senior. Necesito integrar nuestra aplicación con el servicio AgentLocalRag.
-El backend empresarial y el agente RAG están unificados bajo una sola URL base:
+      const promptText = `Actúa como desarrollador frontend senior. Necesito integrar nuestra aplicación con el sistema autónomo de TransLogix Express S.A.S.
+El backend, el agente RAG local y los microservicios logísticos están unificados bajo una sola URL base:
 
-URL BASE:
+URL BASE DEL SERVICIO:
 ${base}
 
-REGLAS DE CONSUMO:
-1. CORS está habilitado para todos los orígenes (*). No se requieren tokens de autorización.
-2. Para consultas factuales al Agente RAG:
-   - Endpoint: POST ${base}/api/ask
-   - Body JSON: { "pregunta": string, "session_id": string (opcional), "modelo": string (opcional) }
-   - Retorno JSON:
-     {
-       "success": true,
-       "data": {
-         "mensaje": string,         // Texto en lenguaje natural para la UI
-         "pregunta": string,
-         "fuentes": [{ id, documento, seccion, fragmento, score, relevancia_porcentaje }],
-         "tiene_fuentes": boolean
-       },
-       "metadata": { modelo, session_id, tiempo_respuesta_segundos, timestamp }
+REGLAS CLAVE DE INTEGRACIÓN:
+1. CORS está habilitado para todos los orígenes (*).
+2. Endpoint Principal del Agente: POST ${base}/api/ask
+   - Body JSON: { "pregunta": string, "session_id": string (opcional), "modelo": string (opcional), "uid": string (opcional), "token": string (opcional) }
+   - El agente responde consultas factuales con fuentes y emite bloques de acción estructurados:
+     "action": {
+       "type": "COTIZAR" | "RASTREAR" | "PQRS" | "VERIFICAR_MERCANCIA" | "CONSULTAR_COBERTURA",
+       "data": { ...campos normalizados... }
      }
-3. Para consultar o modificar políticas en la base de datos SQLite del Backend:
-   - Listar políticas: GET ${base}/policies
-   - Obtener una: GET ${base}/policies/{id}
-   - Crear política: POST ${base}/policies -> Body: { "seccion": string, "titulo": string, "contenido": string }
-   - Modificar política: PUT ${base}/policies/{id} -> Body: { "contenido": string, "titulo": string }
-4. Para chequear la salud del servicio: GET ${base}/health
-5. Puedes leer la especificación completa en formato Markdown en: ${base}/docs.md`;
+3. Cursor Virtual ("Tomar el Mando"): El frontend anima el movimiento del puntero (#agentVirtualCursor) hacia los campos correspondientes, escribe los valores secuencialmente y presiona submit.
+4. Microservicios Logísticos Disponibles:
+   - POST ${base}/api/v1/cotizar -> Cálculo volumétrico (divisor 4000 cm³/kg), peso facturable y flete con seguro (1% mín $2.500 COP).
+   - GET  ${base}/api/v1/tracking/{guia} -> Estado en tiempo real del TMS e historial de escaneo en hubs.
+   - POST ${base}/api/v1/pqrs -> Radicación oficial con plazo legal de 15 días hábiles y bandera de escalamiento humano (> $5.000.000 COP).
+   - GET  ${base}/api/v1/mercancias-peligrosas -> Clases 1-9 ONU y requisitos de Hoja de Seguridad (HDS).
+   - GET  ${base}/api/v1/municipios & GET ${base}/api/v1/departamentos -> Directorio descargado en SQLite de 32 departamentos y 173 municipios.
+   - GET  ${base}/api/v1/paises -> 16 países destino de Courier Internacional Express.
+5. Autenticación & Memoria Episódica:
+   - POST ${base}/api/v1/auth/register & POST ${base}/api/v1/auth/login -> Hashing PBKDF2-HMAC-SHA256, UID inmutable usr_<hex> y Bearer tokens.
+   - POST ${base}/api/v1/user/event -> Persiste cotizaciones incompletas y comportamiento en SQLite y ChromaDB.
+   - GET  ${base}/api/v1/user/history -> Retorna historial, memorias vectoriales y cotizaciones no finalizadas para restaurar en pantalla.
+6. Especificación técnica completa en: ${base}/docs.md`;
 
       const el = document.getElementById('aiPromptCodeDisplay');
-      el.textContent = promptText;
-      Prism.highlightElement(el);
+      if (el) {
+        el.textContent = promptText;
+        Prism.highlightElement(el);
+      }
+    }
+
+    function renderSystemPrompt() {
+      const sysPromptText = `Eres TransLogix AI, asistente virtual de TransLogix Express para el caso KODO TAKAI 2026.
+
+Responde en español claro, breve y respetuoso.
+
+Utiliza únicamente la base documental autorizada y las respuestas de las APIs conectadas.
+No inventes tarifas, cobertura, tiempos, estados de guía, radicados, disponibilidad ni políticas.
+
+Para cotizar:
+- Solicita origen, destino, dimensiones en cm, peso real y valor declarado.
+- Calcula peso volumétrico = alto * ancho * largo / 4000.
+- Calcula peso facturable = mayor entre peso real y volumétrico.
+- No entregues precio final si no están aprobadas las reglas para tarifa real/volumétrica,
+  flete mínimo, seguro mínimo y recargos.
+
+Para cobertura:
+- Consulta el directorio municipal (32 departamentos de Colombia y 173 municipios).
+- Verifica la ruta en la matriz cuando corresponda.
+- Si los tiempos o servicios discrepan, informa que debe validarse.
+
+Para rastreo:
+- Consulta el TMS.
+- Explica únicamente los estados documentados.
+- No inventes fecha estimada ni confirmación de entrega.
+
+Para mercancías peligrosas:
+- Identifica producto, HDS, número ONU, clase, cantidad y modalidad.
+- No autorices mercancías prohibidas o restringidas.
+- Transfiere a Operaciones ante duda o falta de documentos.
+
+Para PQRS:
+- Orienta con los documentos indicados en la base (plazo legal 15 días hábiles).
+- No decidas responsabilidad ni indemnización.
+- No afirmes radicación sin confirmación del sistema.
+
+Transfiere inmediatamente si:
+- Confianza RAG < 0.75.
+- Reclamación/PQRS con valor declarado > $5.000.000 COP.
+- Sentimiento fuertemente negativo.
+- Amenaza de demanda ante Supertransporte.
+- Cuenta Key Account / VIP.
+
+Si hay contradicción, falta información o riesgo de seguridad, no adivines.
+Explica qué falta y transfiere al área responsable.
+
+No confirmes una operación hasta que el sistema correspondiente responda exitosamente.`;
+
+      const el = document.getElementById('sysPromptCodeDisplay');
+      if (el) {
+        el.textContent = sysPromptText;
+        Prism.highlightElement(el);
+      }
     }
 
     function copyAiPrompt() {
@@ -714,6 +819,14 @@ REGLAS DE CONSUMO:
       const btn = document.getElementById('btnCopyPromptLabel');
       if (btn) btn.textContent = '¡Copiado!';
       setTimeout(() => { if (btn) btn.textContent = 'Copiar Prompt'; }, 2000);
+    }
+
+    function copySystemPrompt() {
+      const text = document.getElementById('sysPromptCodeDisplay').textContent;
+      navigator.clipboard.writeText(text);
+      const btn = document.getElementById('btnCopySysPromptLabel');
+      if (btn) btn.textContent = '¡Copiado!';
+      setTimeout(() => { if (btn) btn.textContent = 'Copiar System Prompt'; }, 2000);
     }
 
     async function checkHealth() {
