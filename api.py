@@ -22,7 +22,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, Field
@@ -207,13 +207,13 @@ class QueryResponse(BaseModel):
 
 # Esquemas de Negocio TransLogix
 class CotizacionRequest(BaseModel):
-    origen: str = Field(..., example="Bogotá")
-    destino: str = Field(..., example="Medellín")
-    alto: float = Field(..., example=30.0, description="Alto en cm")
-    ancho: float = Field(..., example=30.0, description="Ancho en cm")
-    largo: float = Field(..., example=30.0, description="Largo en cm")
-    peso_real: float = Field(..., example=10.0, description="Peso real en kg")
-    valor_declarado: float = Field(default=150000.0, description="Valor declarado de la mercancía en COP")
+    origen: str = Field(..., min_length=2, example="Bogotá")
+    destino: str = Field(..., min_length=2, example="Medellín")
+    alto: float = Field(..., gt=0, example=30.0, description="Alto en cm")
+    ancho: float = Field(..., gt=0, example=30.0, description="Ancho en cm")
+    largo: float = Field(..., gt=0, example=30.0, description="Largo en cm")
+    peso_real: float = Field(..., gt=0, example=10.0, description="Peso real en kg")
+    valor_declarado: float = Field(default=150000.0, ge=0, description="Valor declarado de la mercancía en COP")
     tipo_mercancia: Optional[str] = Field(default="Carga General", description="Descripción del contenido")
 
 
@@ -724,7 +724,7 @@ def track_shipment(guia: str):
     }
 
 
-@app.post("/api/v1/pqrs", tags=["Negocio TransLogix"])
+@app.post("/api/v1/pqrs", status_code=status.HTTP_201_CREATED, tags=["Negocio TransLogix"])
 @app.post("/api/pqrs", tags=["Negocio TransLogix"], include_in_schema=False)
 def radicar_pqrs(payload: PqrsCreateRequest):
     """
@@ -859,7 +859,7 @@ def get_paises_endpoint():
 # ENDPOINTS DE AUTENTICACIÓN Y SEGURIDAD DE USUARIOS
 # ==============================================================================
 
-@app.post("/api/v1/auth/register", tags=["Autenticación y Usuarios"])
+@app.post("/api/v1/auth/register", status_code=status.HTTP_201_CREATED, tags=["Autenticación y Usuarios"])
 def api_register_user(payload: RegisterRequest):
     """Registra un nuevo usuario con UID criptográfico, hash con salt y token de sesión."""
     try:
@@ -942,7 +942,7 @@ def api_logout_user(token: Optional[str] = None, request: Request = None):
 # ENDPOINTS DE COMPORTAMIENTO Y MEMORIA VECTORIAL DEL USUARIO
 # ==============================================================================
 
-@app.post("/api/v1/user/event", tags=["Memoria y Comportamiento"])
+@app.post("/api/v1/user/event", status_code=status.HTTP_201_CREATED, tags=["Memoria y Comportamiento"])
 def api_record_user_event(payload: UserEventRequest, request: Request):
     """
     Registra un evento comportamental del usuario en la página:

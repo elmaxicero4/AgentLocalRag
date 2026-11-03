@@ -184,6 +184,18 @@ def init_db(force_refresh: bool = False):
                 FOREIGN KEY (uid) REFERENCES usuarios(uid)
             )
         """)
+
+        # Índices de Alto Rendimiento e Integridad Referencial
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sesiones_token ON usuario_sesiones(token);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sesiones_uid ON usuario_sesiones(uid);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_eventos_uid ON usuario_eventos(uid);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_eventos_tipo ON usuario_eventos(tipo_evento);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_eventos_uid_tipo ON usuario_eventos(uid, tipo_evento);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_municipios_depto ON colombia_municipios(departamento);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_municipios_nombre ON colombia_municipios(municipio);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_paises_iso ON destinos_internacionales(codigo_iso);")
         conn.commit()
 
 
