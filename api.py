@@ -444,7 +444,9 @@ def get_models():
         item["is_active"] = (item["id"] == active)
 
     presets = [
-        {"id": "qwen2.5:7b-instruct", "nombre": "Qwen 2.5 7B", "tier": "7B", "desc": "⚡ Ultra Rápido (<1.5s)"},
+        {"id": "qwen2.5:1.5b", "nombre": "Qwen 2.5 1.5B", "tier": "1.5B", "desc": "⚡ 1.5B (Ultra Rápido / 986MB)"},
+        {"id": "qwen2.5:3b", "nombre": "Qwen 2.5 3B", "tier": "3B", "desc": "🍃 3B (Ligero CPU / 1.9GB)"},
+        {"id": "qwen2.5:7b-instruct", "nombre": "Qwen 2.5 7B", "tier": "7B", "desc": "⚡ 7B (Rápido / 4.7GB)"},
         {"id": "qwen2.5-coder:14b", "nombre": "Qwen 2.5 Coder 14B", "tier": "14B", "desc": "⚖️ Balance Óptimo (~9GB)"},
         {"id": "qwen2.5-coder:32b", "nombre": "Qwen 2.5 Coder 32B", "tier": "32B", "desc": "🚀 Razonamiento Alto"},
         {"id": "qwen3.6:35b", "nombre": "Qwen 3.6 35B", "tier": "35B", "desc": "🧠 MoE Avanzado"},

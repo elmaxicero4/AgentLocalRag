@@ -104,6 +104,14 @@ def start_tunnel_process() -> str:
         match = url_regex.search(line)
         if match:
             tunnel_url = match.group(0)
+            # Drenar stderr en segundo plano para evitar que el buffer del pipe bloquee a cloudflared
+            def _drain_stderr(pipe):
+                try:
+                    for _ in iter(pipe.readline, ''):
+                        pass
+                except Exception:
+                    pass
+            threading.Thread(target=_drain_stderr, args=(tunnel_process.stderr,), daemon=True).start()
             break
 
     if tunnel_url:

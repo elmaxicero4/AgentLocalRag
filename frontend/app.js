@@ -1544,10 +1544,48 @@ async function syncObsidianVault() {
   }
 }
 
+// Cargar modelos instalados dinámicamente desde el backend Ollama
+async function loadAvailableModels() {
+  if (!selectModel) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/models`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.models && data.models.length > 0) {
+      const currentVal = selectModel.value;
+      selectModel.innerHTML = "";
+      data.models.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        let icon = "⚡";
+        if (m.id.includes("1.5b")) icon = "⚡";
+        else if (m.id.includes("3b")) icon = "🍃";
+        else if (m.id.includes("14b")) icon = "⚖️";
+        else if (m.id.includes("32b")) icon = "🚀";
+        else if (m.id.includes("35b")) icon = "🧠";
+        opt.textContent = `${icon} ${m.nombre} (${m.size_gb}GB - ${m.tier})`;
+        if (m.id === currentVal || (!currentVal && m.id === "qwen2.5:3b")) {
+          opt.selected = true;
+        }
+        selectModel.appendChild(opt);
+      });
+      if (!selectModel.value && selectModel.options.length > 0) {
+        // Preferir 3b o 1.5b si existen
+        const pref = Array.from(selectModel.options).find(o => o.value.includes("3b") || o.value.includes("1.5b"));
+        if (pref) pref.selected = true;
+        else selectModel.options[0].selected = true;
+      }
+    }
+  } catch (e) {
+    console.warn("No se pudieron cargar modelos dinámicos:", e);
+  }
+}
+
 // Iniciar al cargar la ventana
 window.addEventListener("DOMContentLoaded", () => {
   checkHealth();
   checkAuthStatus();
   loadGeoDatabase();
   setupQuoteInputTracking();
+  loadAvailableModels();
 });
