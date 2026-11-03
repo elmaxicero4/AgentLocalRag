@@ -37,6 +37,8 @@ def get_installed_llm_models() -> List[Dict[str, any]]:
             tier = "Desconocido"
             if ":1b" in name.lower() or ":1.5b" in name.lower():
                 tier = "1B / 1.5B (Ultra Rápido / Mínimo Consumo)"
+            elif ":2b" in name.lower():
+                tier = "2B (Ultra Ligero / Gemma)"
             elif ":3b" in name.lower():
                 tier = "3B (Ligero / Bajo Consumo)"
             elif ":7b" in name.lower() or "-7b" in name.lower() or ":8b" in name.lower():
@@ -81,6 +83,7 @@ def resolve_llm_model(model_override: Optional[str] = None) -> str:
             "qwen2.5-coder:14b",
             "llama3.2:3b",
             "qwen2.5:3b",
+            "gemma2:2b",
             "llama3.2:1b",
             "qwen2.5:1.5b",
             "qwen3:8b",

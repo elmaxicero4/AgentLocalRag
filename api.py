@@ -444,6 +444,7 @@ def get_models():
         item["is_active"] = (item["id"] == active)
 
     presets = [
+        {"id": "gemma2:2b", "nombre": "Gemma 2 2B (Google)", "tier": "2B", "desc": "💎 2B Google Gemma (Ultra Ligero / 1.6GB)"},
         {"id": "llama3.2:1b", "nombre": "Llama 3.2 1B (Meta)", "tier": "1B", "desc": "⚡ 1B Meta (Ultra Rápido / 1.3GB)"},
         {"id": "llama3.2:3b", "nombre": "Llama 3.2 3B (Meta)", "tier": "3B", "desc": "🍃 3B Meta (Ligero / 2.0GB)"},
         {"id": "qwen2.5:1.5b", "nombre": "Qwen 2.5 1.5B", "tier": "1.5B", "desc": "⚡ 1.5B (Ultra Rápido / 986MB)"},
