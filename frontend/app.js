@@ -1,244 +1,138 @@
 /**
- * frontend/app.js - Lógica interactiva del Frontend para AgentLocalRag.
- * Conecta con el Agente RAG (puerto 8000) y el Backend empresarial (puerto 5001).
+ * frontend/app.js - Controlador del Portal TransLogix Express & Agente Web Autónomo.
+ * Conecta con el Agente RAG Local (puerto 8000), el TMS de rastreo y la base de datos empresarial.
+ * Incluye el motor de Cursor Virtual Autónomo que opera los componentes de la página en vivo.
  */
 
-const AGENT_API_URL = "http://localhost:8000";
-const BACKEND_API_URL = "http://localhost:5001";
-const SESSION_ID = "frontend_session_" + Math.random().toString(36).substring(2, 9);
+const API_BASE_URL = (typeof window !== "undefined" && window.location.origin.startsWith("http"))
+  ? window.location.origin
+  : "http://localhost:8000";
 
+const SESSION_ID = "tlx_session_" + Math.random().toString(36).substring(2, 9);
 let currentPolicies = [];
 
-// Elementos del DOM
-const agentStatusDot = document.getElementById("agentStatusDot");
-const agentStatusText = document.getElementById("agentStatusText");
-const backendStatusDot = document.getElementById("backendStatusDot");
-const backendStatusText = document.getElementById("backendStatusText");
-const lblModelName = document.getElementById("lblModelName");
-
-// Selector de modelos y Badges
-const selectModel = document.getElementById("selectModel");
-const modelTierBadge = document.getElementById("modelTierBadge");
-
-// Modal de Benchmark
-const btnOpenBenchmark = document.getElementById("btnOpenBenchmark");
-const benchmarkModal = document.getElementById("benchmarkModal");
-const btnCloseBenchmarkModal = document.getElementById("btnCloseBenchmarkModal");
-const selectBenchModelA = document.getElementById("selectBenchModelA");
-const selectBenchModelB = document.getElementById("selectBenchModelB");
-const inputBenchQuestion = document.getElementById("inputBenchQuestion");
-const btnRunBenchmark = document.getElementById("btnRunBenchmark");
-const benchNameA = document.getElementById("benchNameA");
-const benchTimeA = document.getElementById("benchTimeA");
-const benchBodyA = document.getElementById("benchBodyA");
-const benchNameB = document.getElementById("benchNameB");
-const benchTimeB = document.getElementById("benchTimeB");
-const benchBodyB = document.getElementById("benchBodyB");
-const benchSummaryBanner = document.getElementById("benchSummaryBanner");
-const benchSummaryText = document.getElementById("benchSummaryText");
-const benchSpeedDiffBadge = document.getElementById("benchSpeedDiffBadge");
-
-const policiesList = document.getElementById("policiesList");
-const btnRefreshPolicies = document.getElementById("btnRefreshPolicies");
-const btnForceSync = document.getElementById("btnForceSync");
-
+// Elementos del Agente & Chat
 const chatContainer = document.getElementById("chatContainer");
 const chatForm = document.getElementById("chatForm");
 const inputQuestion = document.getElementById("inputQuestion");
 const btnSendMessage = document.getElementById("btnSendMessage");
 const btnClearChat = document.getElementById("btnClearChat");
+const selectModel = document.getElementById("selectModel");
 
-// Modales
+// Elementos de Autenticación & Memoria del Usuario
+let currentUser = null;
+let currentAuthToken = localStorage.getItem("tlx_auth_token") || "";
+let uncompletedQuoteTimer = null;
+let lastTrackedQuotePayload = null;
+
+// Elementos del Cursor Virtual del Agente
+const agentVirtualCursor = document.getElementById("agentVirtualCursor");
+const agentCursorLabel = document.getElementById("agentCursorLabel");
+const cursorRipple = document.getElementById("cursorRipple");
+
+// Indicadores de Estado
+const agentStatusDot = document.getElementById("agentStatusDot");
+const agentStatusText = document.getElementById("agentStatusText");
+const backendStatusDot = document.getElementById("backendStatusDot");
+const backendStatusText = document.getElementById("backendStatusText");
+
+// Modales de Administración de BD
 const policyModal = document.getElementById("policyModal");
 const btnOpenPolicyModal = document.getElementById("btnOpenPolicyModal");
 const btnClosePolicyModal = document.getElementById("btnClosePolicyModal");
 const btnCancelPolicyModal = document.getElementById("btnCancelPolicyModal");
 const btnSubmitPolicy = document.getElementById("btnSubmitPolicy");
-
 const selectPolicyAction = document.getElementById("selectPolicyAction");
 const inputPolicySection = document.getElementById("inputPolicySection");
 const inputPolicyTitle = document.getElementById("inputPolicyTitle");
 const textareaPolicyContent = document.getElementById("textareaPolicyContent");
 
-// Loading Modal y Barra de Progreso
-const loadingModal = document.getElementById("loadingModal");
-const loadingSpinner = document.getElementById("loadingSpinner");
-const successCheck = document.getElementById("successCheck");
-const loadingTitle = document.getElementById("loadingTitle");
-const loadingSubtitle = document.getElementById("loadingSubtitle");
-const progressBar = document.getElementById("progressBar");
-const loadingStepText = document.getElementById("loadingStepText");
-const loadingPercentageText = document.getElementById("loadingPercentageText");
-const step1 = document.getElementById("step1");
-const step2 = document.getElementById("step2");
-const step3 = document.getElementById("step3");
-const step4 = document.getElementById("step4");
+// Variables de la Base de Datos Geográfica (Colombia & Internacional)
+let cachedDepartamentos = [];
+let cachedMunicipios = [];
+let cachedPaises = [];
 
 
 // ==============================================================================
-// 1. INICIALIZACIÓN Y VERIFICACIÓN DE ESTADO
+// 1. INICIALIZACIÓN Y SALUD DE LOS SERVICIOS
 // ==============================================================================
 
-async function checkHealth() {
-  // 1. Verificar Agente RAG y listar modelos
+let activeTunnelUrl = "";
+
+async function checkTunnelStatus() {
+  const badgeContainer = document.getElementById("tunnelBadgeContainer");
+  const badgeLink = document.getElementById("tunnelBadgeLink");
   try {
-    const res = await fetch(`${AGENT_API_URL}/health`);
+    const res = await fetch(`${API_BASE_URL}/api/tunnel-info`);
     if (res.ok) {
       const data = await res.json();
-      agentStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
-      agentStatusText.textContent = "Conectado";
-      agentStatusText.className = "text-emerald-400 font-medium";
-      if (lblModelName) lblModelName.textContent = data.modelo || "qwen3.6:35b";
-      await loadAvailableModels(data.modelo);
-    } else {
-      throw new Error();
+      if (data.is_active && data.tunnel_url) {
+        activeTunnelUrl = data.tunnel_url;
+        if (badgeLink) {
+          badgeLink.href = data.tunnel_url;
+          badgeLink.textContent = data.tunnel_url.replace("https://", "");
+        }
+        if (badgeContainer) badgeContainer.classList.remove("hidden");
+      }
     }
   } catch (e) {
-    agentStatusDot.className = "w-2.5 h-2.5 rounded-full bg-red-400";
-    agentStatusText.textContent = "Sin conexión (puerto 8000)";
-    agentStatusText.className = "text-red-400 font-medium";
-  }
-
-  // 2. Verificar Backend BD
-  try {
-    const res = await fetch(`${BACKEND_API_URL}/policies`);
-    if (res.ok) {
-      backendStatusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
-      backendStatusText.textContent = "Conectado";
-      backendStatusText.className = "text-emerald-400 font-medium";
-      await loadPolicies();
-    } else {
-      throw new Error();
-    }
-  } catch (e) {
-    backendStatusDot.className = "w-2.5 h-2.5 rounded-full bg-red-400";
-    backendStatusText.textContent = "Sin conexión (puerto 5001)";
-    backendStatusText.className = "text-red-400 font-medium";
-    policiesList.innerHTML = `
-      <div class="text-center p-4 text-xs text-red-400 bg-red-950/20 border border-red-900/40 rounded-xl">
-        Backend no detectado en el puerto 5001.<br>
-        Inícialo con: <code class="text-slate-300">python backend/server.py</code>
-      </div>
-    `;
+    console.warn("[Tunnel] Error verificando túnel:", e);
   }
 }
 
-let availableModelsList = [];
-
-async function loadAvailableModels(activeModelName) {
-  try {
-    const res = await fetch(`${AGENT_API_URL}/api/models`);
-    if (!res.ok) return;
-    const data = await res.json();
-    availableModelsList = data.models || [];
-    const active = activeModelName || data.active_model;
-
-    // Presets esenciales si no están en la lista
-    const basePresets = [
-      { id: "qwen2.5:7b-instruct", label: "⚡ Qwen 2.5 7B (Ultra Rápido)", tier: "7B" },
-      { id: "qwen2.5-coder:14b", label: "⚖️ Qwen 2.5 Coder 14B (Equilibrado)", tier: "14B" },
-      { id: "qwen2.5-coder:32b", label: "🚀 Qwen 2.5 Coder 32B (Razonamiento Alto)", tier: "32B" },
-      { id: "qwen3.6:35b", label: "🧠 Qwen 3.6 35B (MoE Profundo)", tier: "35B" },
-    ];
-
-    // Construir opciones del dropdown principal
-    const optionsHtml = basePresets.map(p => {
-      const isSelected = (p.id === active || (active && active.startsWith(p.id)));
-      return `<option value="${p.id}" ${isSelected ? "selected" : ""}>${p.label}</option>`;
-    }).join("") + (availableModelsList.filter(m => !basePresets.some(bp => bp.id === m.id)).map(m => `
-      <option value="${m.id}">${m.id} (${m.size_gb} GB - ${m.tier})</option>
-    `).join(""));
-
-    if (selectModel) {
-      selectModel.innerHTML = optionsHtml;
-      updateModelBadge();
-    }
-
-    if (selectBenchModelA) {
-      selectBenchModelA.innerHTML = optionsHtml;
-      selectBenchModelA.value = "qwen2.5:7b-instruct";
-    }
-
-    if (selectBenchModelB) {
-      selectBenchModelB.innerHTML = optionsHtml;
-      selectBenchModelB.value = "qwen2.5-coder:32b";
-    }
-
-  } catch (err) {
-    console.warn("No se pudieron cargar modelos dinámicos:", err);
+function copyTunnelUrl() {
+  if (!activeTunnelUrl) {
+    activeTunnelUrl = window.location.origin;
   }
-}
-
-function updateModelBadge() {
-  if (!selectModel || !modelTierBadge) return;
-  const val = selectModel.value;
-  if (val.includes("7b") || val.includes("8b")) {
-    modelTierBadge.textContent = "⚡ 7B • Ultra Rápido (<1.5s)";
-    modelTierBadge.className = "bg-emerald-950/70 border border-emerald-800 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
-  } else if (val.includes("14b")) {
-    modelTierBadge.textContent = "⚖️ 14B • Balance Calidad/Velocidad";
-    modelTierBadge.className = "bg-blue-950/70 border border-blue-800 text-blue-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
-  } else if (val.includes("32b")) {
-    modelTierBadge.textContent = "🚀 32B • Razonamiento Alto";
-    modelTierBadge.className = "bg-cyan-950/70 border border-cyan-800 text-cyan-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
-  } else if (val.includes("35b")) {
-    modelTierBadge.textContent = "🧠 35B • MoE Avanzado";
-    modelTierBadge.className = "bg-purple-950/70 border border-purple-800 text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
-  } else {
-    modelTierBadge.textContent = "🤖 Modelo Local";
-    modelTierBadge.className = "bg-slate-800 border border-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-mono";
-  }
-}
-
-if (selectModel) {
-  selectModel.addEventListener("change", () => {
-    updateModelBadge();
+  navigator.clipboard.writeText(activeTunnelUrl).then(() => {
+    const btn = document.getElementById("btnCopyTunnel");
+    if (btn) {
+      btn.innerHTML = `<span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">¡Copiado!</span>`;
+      setTimeout(() => {
+        btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`;
+      }, 1800);
+    }
+  }).catch(() => {
+    prompt("Copia la URL del túnel:", activeTunnelUrl);
   });
 }
 
-
-// ==============================================================================
-// 2. GESTIÓN DE POLÍTICAS EN EL PANEL LATERAL
-// ==============================================================================
-
-async function loadPolicies() {
+async function checkHealth() {
+  checkTunnelStatus();
   try {
-    const res = await fetch(`${BACKEND_API_URL}/policies`);
-    if (!res.ok) return;
-    const data = await res.json();
-    currentPolicies = data.politicas || [];
-
-    if (currentPolicies.length === 0) {
-      policiesList.innerHTML = `<div class="text-center text-xs text-slate-500 py-4">No hay políticas en BD.</div>`;
-      return;
+    const res = await fetch(`${API_BASE_URL}/health`);
+    if (res.ok) {
+      const data = await res.json();
+      if (agentStatusDot) agentStatusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+      if (agentStatusText) agentStatusText.textContent = `En Línea (${data.modelo || "7B"})`;
     }
-
-    policiesList.innerHTML = currentPolicies.map(p => `
-      <div class="p-3 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-xl transition cursor-pointer group" onclick="openEditPolicy(${p.id})">
-        <div class="flex items-center justify-between mb-1">
-          <span class="text-[11px] font-bold text-cyan-400 group-hover:text-cyan-300 transition truncate max-w-[190px]">
-            ${escapeHtml(p.seccion)}
-          </span>
-          <span class="text-[10px] text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded">#${p.id}</span>
-        </div>
-        <p class="text-xs font-medium text-slate-200 mb-1 line-clamp-1">${escapeHtml(p.titulo)}</p>
-        <p class="text-[11px] text-slate-400 line-clamp-2 font-mono">${escapeHtml(p.contenido)}</p>
-      </div>
-    `).join("");
-
-    updatePolicySelectOptions();
-
   } catch (e) {
-    console.error("Error al cargar políticas:", e);
+    if (agentStatusDot) agentStatusDot.className = "w-2 h-2 rounded-full bg-red-500";
+    if (agentStatusText) agentStatusText.textContent = "Sin conexión (puerto 8000)";
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/policies`);
+    if (res.ok) {
+      const data = await res.json();
+      currentPolicies = data.politicas || [];
+      if (backendStatusDot) backendStatusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+      if (backendStatusText) backendStatusText.textContent = `En Línea (${currentPolicies.length} módulos)`;
+      updatePolicyModalOptions();
+    }
+  } catch (e) {
+    if (backendStatusDot) backendStatusDot.className = "w-2 h-2 rounded-full bg-amber-500";
+    if (backendStatusText) backendStatusText.textContent = "BD no inicializada";
   }
 }
 
-function updatePolicySelectOptions() {
+function updatePolicyModalOptions() {
+  if (!selectPolicyAction) return;
   selectPolicyAction.innerHTML = `
     <option value="new">➕ Crear Nueva Política en Base de Datos</option>
-    <optgroup label="Editar Política Existente">
+    <optgroup label="Editar Políticas Existentes de TransLogix">
       ${currentPolicies.map(p => `
-        <option value="${p.id}">Editar: #${p.id} - ${escapeHtml(p.seccion)}</option>
+        <option value="${p.id}">#${p.id} - ${escapeHtml(p.seccion)}</option>
       `).join("")}
     </optgroup>
   `;
@@ -246,7 +140,7 @@ function updatePolicySelectOptions() {
 
 
 // ==============================================================================
-// 3. CHAT CON EL AGENTE RAG
+// 2. CHAT CON EL AGENTE TRANSLOGIX & DISPARADOR DE ACCIONES
 // ==============================================================================
 
 chatForm.addEventListener("submit", async (e) => {
@@ -256,23 +150,34 @@ chatForm.addEventListener("submit", async (e) => {
 
   const chosenModel = selectModel ? selectModel.value : null;
 
-  // 1. Agregar mensaje del usuario en el chat
+  // 1. Añadir mensaje del usuario en el chat
   appendUserMessage(question);
   inputQuestion.value = "";
   inputQuestion.focus();
 
-  // 2. Mostrar burbuja de carga / pensando
+  // 2. Añadir burbuja de pensamiento del agente
   const loadingBubbleId = appendAgentLoadingMessage(chosenModel);
 
   try {
-    const res = await fetch(`${AGENT_API_URL}/api/ask`, {
+    const headers = { "Content-Type": "application/json" };
+    if (currentAuthToken) {
+      headers["Authorization"] = `Bearer ${currentAuthToken}`;
+    }
+
+    const payload = {
+      pregunta: question,
+      session_id: SESSION_ID,
+      modelo: chosenModel,
+    };
+    if (currentUser && currentUser.uid) {
+      payload.uid = currentUser.uid;
+      payload.token = currentAuthToken;
+    }
+
+    const res = await fetch(`${API_BASE_URL}/api/ask`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pregunta: question,
-        session_id: SESSION_ID,
-        modelo: chosenModel,
-      })
+      headers: headers,
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
@@ -282,6 +187,13 @@ chatForm.addEventListener("submit", async (e) => {
     const data = await res.json();
     replaceLoadingWithResponse(loadingBubbleId, data);
 
+    // 3. DETECTAR Y EJECUTAR ACCIÓN AUTÓNOMA DEL AGENTE EN LA PÁGINA
+    const action = data.action || (data.data && data.data.action);
+    if (action) {
+      console.log("[TransLogix Agent] Acción detectada:", action);
+      executeAgentAutonomousAction(action);
+    }
+
   } catch (error) {
     replaceLoadingWithError(loadingBubbleId, error.message);
   }
@@ -289,15 +201,13 @@ chatForm.addEventListener("submit", async (e) => {
 
 function appendUserMessage(text) {
   const div = document.createElement("div");
-  div.className = "flex items-start justify-end space-x-3";
+  div.className = "flex items-start justify-end gap-3 max-w-[85%] ml-auto";
   div.innerHTML = `
-    <div class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-2xl rounded-tr-none px-4 py-3 max-w-2xl text-sm shadow-md">
-      <p class="leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</p>
+    <div class="bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900 rounded-2xl rounded-tr-sm px-4 py-3 text-[13px] shadow-xs border border-zinc-800 dark:border-zinc-200 leading-relaxed">
+      <p class="whitespace-pre-wrap font-normal">${escapeHtml(text)}</p>
     </div>
-    <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center shrink-0 text-slate-300">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-      </svg>
+    <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shrink-0 text-zinc-700 dark:text-zinc-300 text-xs font-semibold shadow-xs mt-0.5">
+      Tú
     </div>
   `;
   chatContainer.appendChild(div);
@@ -308,20 +218,18 @@ function appendAgentLoadingMessage(modelLabel) {
   const id = "loading_" + Date.now();
   const div = document.createElement("div");
   div.id = id;
-  div.className = "flex items-start space-x-3 max-w-3xl";
-  const label = modelLabel || (selectModel ? selectModel.value : "modelo local");
+  div.className = "flex items-start gap-3 max-w-full";
+  const label = modelLabel || (selectModel ? selectModel.value : "7B");
   div.innerHTML = `
-    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-md animate-pulse">
-      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-      </svg>
+    <div class="w-8 h-8 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center shrink-0 text-xs font-bold shadow-xs mt-0.5">
+      R
     </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none p-4 shadow-sm text-sm text-slate-300 flex items-center space-x-3">
-      <svg class="w-4 h-4 text-cyan-400 animate-spin" fill="none" viewBox="0 0 24 24">
+    <div class="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl rounded-tl-sm p-4 shadow-xs text-xs text-zinc-600 dark:text-zinc-400 flex items-center space-x-3">
+      <svg class="w-4 h-4 text-zinc-900 dark:text-zinc-100 animate-spin" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <span class="text-slate-400 text-xs">Consultando base de datos y razonando con <strong>${escapeHtml(label)}</strong>...</span>
+      <span>Consultando base TransLogix con <strong>${escapeHtml(label)}</strong>...</span>
     </div>
   `;
   chatContainer.appendChild(div);
@@ -333,45 +241,56 @@ function replaceLoadingWithResponse(bubbleId, data) {
   const loadingElem = document.getElementById(bubbleId);
   if (!loadingElem) return;
 
-  const htmlResponse = marked.parse(data.respuesta || "");
-  const timeFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const sec = data.tiempo_respuesta_segundos;
+  const msgText = (data.data && data.data.mensaje) ? data.data.mensaje : (data.respuesta || "");
+  const htmlResponse = marked.parse(msgText);
+  const timeFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const sec = (data.metadata && data.metadata.tiempo_respuesta_segundos) ? data.metadata.tiempo_respuesta_segundos : (data.tiempo_respuesta_segundos || 0);
 
-  let speedBadge = "";
-  if (sec < 2.0) {
-    speedBadge = `<span class="bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-mono">⚡ ${sec}s • Ultra Rápido</span>`;
-  } else if (sec < 6.0) {
-    speedBadge = `<span class="bg-cyan-950/80 text-cyan-300 border border-cyan-800 text-[10px] px-2 py-0.5 rounded-full font-mono">⚖️ ${sec}s • Equilibrado</span>`;
-  } else {
-    speedBadge = `<span class="bg-purple-950/80 text-purple-300 border border-purple-800 text-[10px] px-2 py-0.5 rounded-full font-mono">🧠 ${sec}s • Razonamiento Profundo</span>`;
+  // Insignia de Acción si el agente operó la página
+  let actionBadge = "";
+  const act = data.action || (data.data && data.data.action);
+  if (act) {
+    let actName = "Intervención en Portal";
+    if (act.type === "quote" || act.type === "COTIZAR") actName = "Cotización Autocompletada";
+    else if (act.type === "track" || act.type === "RASTREAR") actName = "Rastreo TMS Ejecutado";
+    else if (act.type === "dangerous_goods" || act.type === "VERIFICAR_MERCANCIA") actName = "Verificación Mercancía Peligrosa";
+    else if (act.type === "pqrs" || act.type === "PQRS") actName = "Formulario PQRS Preparado";
+    else if (act.type === "coverage" || act.type === "CONSULTAR_COBERTURA") actName = "Consulta de Cobertura Troncal";
+
+    actionBadge = `
+      <div class="mt-3.5 mb-2 px-3 py-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 text-xs flex items-center justify-between font-mono">
+        <span class="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200 font-semibold">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ⚡ Acción del Agente: ${actName}
+        </span>
+        <span class="text-zinc-400 text-[11px]">En pantalla ↗</span>
+      </div>
+    `;
   }
 
-  // Renderizar acordeón de fuentes si existen
+  // Acordeón de fuentes
   let fuentesHtml = "";
-  if (data.fuentes && data.fuentes.length > 0) {
-    const fuentesListHtml = data.fuentes.map((f, i) => `
-      <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80 mb-2 last:mb-0 text-xs">
-        <div class="flex items-center justify-between text-[11px] mb-1">
-          <span class="font-bold text-yellow-400 font-mono">📄 ${escapeHtml(f.archivo)}</span>
-          <span class="text-emerald-400 bg-emerald-950/60 border border-emerald-900 px-1.5 py-0.2 rounded font-mono">
-            Score: ${f.score !== null ? f.score.toFixed(4) : "N/A"}
-          </span>
+  const fuentesList = (data.data && data.data.fuentes) ? data.data.fuentes : (data.fuentes || []);
+  if (fuentesList && fuentesList.length > 0) {
+    const listHtml = fuentesList.map(f => `
+      <div class="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 mb-2 last:mb-0 text-xs">
+        <div class="flex items-center justify-between font-mono mb-1">
+          <span class="font-bold text-zinc-900 dark:text-zinc-100">📄 ${escapeHtml(f.archivo || "Doc")}</span>
+          <span class="text-zinc-500 text-[10px]">Score: ${f.score ? f.score.toFixed(3) : "OK"}</span>
         </div>
-        <p class="text-slate-300 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">${escapeHtml(f.fragmento)}</p>
+        ${f.seccion ? `<div class="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">${escapeHtml(f.seccion)}</div>` : ''}
+        <p class="text-zinc-600 dark:text-zinc-400 font-mono text-[11px] line-clamp-3 leading-relaxed">${escapeHtml(f.fragmento || "")}</p>
       </div>
     `).join("");
 
     fuentesHtml = `
-      <div class="mt-3 pt-3 border-t border-slate-800">
+      <div class="mt-3.5 pt-3 border-t border-zinc-100 dark:border-zinc-800">
         <details class="group cursor-pointer">
-          <summary class="text-xs font-semibold text-slate-400 hover:text-cyan-400 transition flex items-center space-x-1 select-none">
-            <svg class="w-3.5 h-3.5 text-cyan-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-            <span>📚 Fuentes y Nodos Recuperados (${data.fuentes.length})</span>
+          <summary class="text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition flex items-center space-x-1.5 select-none">
+            <svg class="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <span>Fuentes Documentales Consultadas (${fuentesList.length})</span>
           </summary>
-          <div class="mt-2 pl-4">
-            ${fuentesListHtml}
+          <div class="mt-2.5 space-y-1.5">
+            ${listHtml}
           </div>
         </details>
       </div>
@@ -379,39 +298,31 @@ function replaceLoadingWithResponse(bubbleId, data) {
   }
 
   loadingElem.innerHTML = `
-    <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 shadow-md">
-      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-      </svg>
+    <div class="w-8 h-8 rounded-lg bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center shrink-0 text-xs font-bold shadow-xs mt-0.5">
+      R
     </div>
-    <div class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl rounded-tl-none p-4 shadow-sm text-sm text-slate-200">
-      
-      <!-- Barra superior de benchmark del mensaje -->
-      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-[11px]">
-        <div class="flex items-center space-x-1.5">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-          <span class="font-mono text-cyan-300 font-bold">${escapeHtml(data.modelo)}</span>
+    <div class="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 rounded-2xl rounded-tl-sm p-4 sm:p-5 shadow-xs text-zinc-900 dark:text-zinc-100 max-w-full">
+      <div class="flex items-center justify-between pb-2.5 mb-3.5 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-mono text-zinc-500">
+        <div class="flex items-center space-x-2">
+          <span class="text-zinc-800 dark:text-zinc-200 font-semibold">${escapeHtml(data.modelo || "qwen2.5:7b-instruct")}</span>
+          <span class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span> En Línea
+          </span>
         </div>
-        ${speedBadge}
+        <span class="text-zinc-400 font-mono">⏱️ ${sec}s</span>
       </div>
 
-      <!-- Contenido de respuesta -->
-      <div class="prose prose-invert prose-sm max-w-none leading-relaxed">
+      <div class="chat-markdown text-[13px] leading-relaxed text-zinc-700 dark:text-zinc-300">
         ${htmlResponse}
       </div>
 
-      <!-- Fuentes -->
+      ${actionBadge}
       ${fuentesHtml}
 
-      <!-- Metadatos de inferencia en el pie -->
-      <div class="mt-3 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-        <span>Sesión: <code class="text-slate-400">${escapeHtml(data.session_id || "default")}</code></span>
-        <div class="flex items-center space-x-3">
-          <span>Tiempo: <strong class="text-cyan-400">${data.tiempo_respuesta_segundos}s</strong></span>
-          <span>${timeFormatted}</span>
-        </div>
+      <div class="mt-3.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 flex justify-between font-mono">
+        <span>TransLogix AI</span>
+        <span>${timeFormatted}</span>
       </div>
-
     </div>
   `;
   scrollToBottom();
@@ -421,44 +332,515 @@ function replaceLoadingWithError(bubbleId, errMsg) {
   const loadingElem = document.getElementById(bubbleId);
   if (!loadingElem) return;
   loadingElem.innerHTML = `
-    <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center shrink-0 text-white shadow-md">
-      !
-    </div>
-    <div class="flex-1 bg-red-950/30 border border-red-900/50 rounded-2xl rounded-tl-none p-4 text-sm text-red-200">
-      <p class="font-bold text-red-400 mb-1">Error al consultar al Agente</p>
-      <p class="text-xs text-red-300">${escapeHtml(errMsg)}</p>
+    <div class="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 font-bold text-xs shadow-xs mt-0.5">!</div>
+    <div class="flex-1 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl rounded-tl-sm p-4 text-xs text-red-800 dark:text-red-300">
+      <p class="font-bold text-sm">Error en consulta</p>
+      <p class="text-xs mt-1 leading-relaxed">${escapeHtml(errMsg)}</p>
     </div>
   `;
   scrollToBottom();
 }
 
 function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-btnClearChat.addEventListener("click", () => {
-  chatContainer.innerHTML = `
-    <div class="text-center text-xs text-slate-500 py-4">
-      Conversación reiniciada. Puedes formular una nueva pregunta.
-    </div>
-  `;
-});
+if (btnClearChat) {
+  btnClearChat.addEventListener("click", () => {
+    chatContainer.innerHTML = `
+      <div class="text-center text-xs text-zinc-400 dark:text-zinc-500 py-6">
+        Conversación reiniciada. Puedes formular una nueva consulta o pedirle al agente que actúe en la página.
+      </div>
+    `;
+  });
+}
 
 
 // ==============================================================================
-// 4. MODAL DE ALIMENTAR / MODIFICAR BASE DE DATOS
+// 3. MOTOR DEL CURSOR VIRTUAL AUTÓNOMO ("EL AGENTE TOMA EL MANDO")
 // ==============================================================================
 
-btnOpenPolicyModal.addEventListener("click", () => {
-  selectPolicyAction.value = "new";
-  onActionChange();
-  policyModal.classList.remove("hidden");
-});
+async function executeAgentAutonomousAction(action) {
+  if (!agentVirtualCursor) return;
 
-btnClosePolicyModal.addEventListener("click", () => policyModal.classList.add("hidden"));
-btnCancelPolicyModal.addEventListener("click", () => policyModal.classList.add("hidden"));
+  const type = action.type;
+  const data = action.data || {};
 
-selectPolicyAction.addEventListener("change", onActionChange);
+  // 1. Despertar el cursor virtual
+  agentVirtualCursor.classList.remove("opacity-0");
+  agentVirtualCursor.classList.add("opacity-100");
+  if (agentCursorLabel) agentCursorLabel.textContent = "🤖 Agente TransLogix Operando...";
+
+  try {
+    if (type === "quote") {
+      await runAgentQuoteAction(data);
+    } else if (type === "track") {
+      await runAgentTrackAction(data);
+    } else if (type === "dangerous_goods") {
+      await runAgentDangerousGoodsAction(data);
+    } else if (type === "pqrs") {
+      await runAgentPqrsAction(data);
+    } else if (type === "coverage") {
+      await runAgentCoverageAction(data);
+    }
+  } catch (err) {
+    console.warn("Fallo en animación del cursor:", err);
+  } finally {
+    setTimeout(() => {
+      agentVirtualCursor.classList.remove("opacity-100");
+      agentVirtualCursor.classList.add("opacity-0");
+    }, 1800);
+  }
+}
+
+// Acción: Autocompletar y calcular cotización
+async function runAgentQuoteAction(data) {
+  const widget = document.getElementById("widgetCotizador");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 3000);
+  }
+
+  // Normalizar datos en español o inglés
+  const origenVal = data.origen || data.origin || "Bogotá";
+  const destinoVal = data.destino || data.destination || "Medellín";
+  const altoVal = data.alto || (data.dimensions && data.dimensions.height) || 30;
+  const anchoVal = data.ancho || (data.dimensions && data.dimensions.width) || 30;
+  const largoVal = data.largo || (data.dimensions && data.dimensions.length) || 30;
+  const pesoVal = data.peso || data.weight || data.peso_real || 10;
+  const valorVal = data.valor || data.declared_value || data.valor_declarado || 150000;
+
+  // Mover cursor a Origen
+  const origenElem = document.getElementById("cotizOrigen");
+  if (origenElem) {
+    await moveCursorToElement(origenElem, "Configurando origen...");
+    // Buscar si coincide parcialmente con las opciones
+    for (const opt of origenElem.options) {
+      if (opt.value.toLowerCase().includes(origenVal.toLowerCase()) || origenVal.toLowerCase().includes(opt.value.toLowerCase())) {
+        origenElem.value = opt.value;
+        break;
+      }
+    }
+    await triggerInputFeedback(origenElem);
+  }
+
+  // Mover cursor a Destino
+  const destinoElem = document.getElementById("cotizDestino");
+  if (destinoElem) {
+    await moveCursorToElement(destinoElem, "Configurando destino...");
+    for (const opt of destinoElem.options) {
+      if (opt.value.toLowerCase().includes(destinoVal.toLowerCase()) || destinoVal.toLowerCase().includes(opt.value.toLowerCase())) {
+        destinoElem.value = opt.value;
+        break;
+      }
+    }
+    await triggerInputFeedback(destinoElem);
+  }
+
+  // Mover a dimensiones
+  const altoElem = document.getElementById("cotizAlto");
+  if (altoElem) {
+    await moveCursorToElement(altoElem, "Ingresando medidas...");
+    altoElem.value = altoVal;
+    await triggerInputFeedback(altoElem);
+  }
+  const anchoElem = document.getElementById("cotizAncho");
+  if (anchoElem) anchoElem.value = anchoVal;
+  const largoElem = document.getElementById("cotizLargo");
+  if (largoElem) largoElem.value = largoVal;
+
+  // Mover a peso real
+  const pesoElem = document.getElementById("cotizPeso");
+  if (pesoElem) {
+    await moveCursorToElement(pesoElem, "Ingresando peso real...");
+    pesoElem.value = pesoVal;
+    await triggerInputFeedback(pesoElem);
+  }
+
+  // Mover a valor declarado
+  const valorElem = document.getElementById("cotizValor");
+  if (valorElem) {
+    valorElem.value = valorVal;
+  }
+
+  // Mover al botón de calcular y hacer clic
+  const btnCalc = document.getElementById("btnEjecutarCotizacion");
+  if (btnCalc) {
+    await moveCursorToElement(btnCalc, "Calculando cotización oficial...");
+    await simulateCursorClick(btnCalc);
+    handleManualCotizacion(new Event("submit"));
+    if (agentCursorLabel) agentCursorLabel.textContent = "✔ ¡Cotización completada!";
+  }
+}
+
+// Acción: Autocompletar y consultar guía en el TMS
+async function runAgentTrackAction(data) {
+  const widget = document.getElementById("widgetRastreo");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 3000);
+  }
+
+  const guiaVal = data.guia || data.tracking_number || data.guide || "TLX-84920194-CO";
+  const inputGuia = document.getElementById("inputGuia");
+  if (inputGuia) {
+    await moveCursorToElement(inputGuia, "Ingresando guía en TMS...");
+    inputGuia.value = guiaVal;
+    await triggerInputFeedback(inputGuia);
+  }
+
+  const btnTrack = document.getElementById("btnEjecutarRastreo");
+  if (btnTrack) {
+    await moveCursorToElement(btnTrack, "Consultando estado TMS...");
+    await simulateCursorClick(btnTrack);
+    handleManualRastreo(new Event("submit"));
+    if (agentCursorLabel) agentCursorLabel.textContent = "✔ ¡Rastreo obtenido del TMS!";
+  }
+}
+
+// Acción: Navegar y enfocar mercancías peligrosas
+async function runAgentDangerousGoodsAction(data) {
+  const widget = document.getElementById("widgetMercancias");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    await moveCursorToElement(widget, "Verificando normativa ONU...");
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 2500);
+    if (agentCursorLabel) agentCursorLabel.textContent = "✔ Requisitos ONU verificados";
+  }
+}
+
+// Acción: Preparar formulario de PQRS
+async function runAgentPqrsAction(data) {
+  const widget = document.getElementById("widgetPqrs");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 2500);
+  }
+
+  const tipoElem = document.getElementById("pqrsTipo");
+  if (tipoElem && data.tipo) tipoElem.value = data.tipo;
+
+  const motivoElem = document.getElementById("pqrsMotivo");
+  if (motivoElem && data.motivo) {
+    await moveCursorToElement(motivoElem, "Diligenciando hechos...");
+    motivoElem.value = data.motivo;
+    await triggerInputFeedback(motivoElem);
+  }
+
+  if (agentCursorLabel) agentCursorLabel.textContent = "✔ Formulario PQRS preparado";
+}
+
+// Acción: Cobertura
+async function runAgentCoverageAction(data) {
+  const widget = document.getElementById("widgetCobertura");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    await moveCursorToElement(widget, "Consultando red troncal...");
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 2500);
+  }
+}
+
+// Utilidades de animación del Cursor
+function moveCursorToElement(element, labelText) {
+  return new Promise((resolve) => {
+    if (!agentVirtualCursor || !element) {
+      resolve();
+      return;
+    }
+
+    if (labelText && agentCursorLabel) {
+      agentCursorLabel.textContent = labelText;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const targetX = rect.left + rect.width / 2;
+    const targetY = rect.top + rect.height / 2;
+
+    agentVirtualCursor.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+    setTimeout(resolve, 600);
+  });
+}
+
+function simulateCursorClick(element) {
+  return new Promise((resolve) => {
+    if (cursorRipple) {
+      cursorRipple.classList.remove("hidden");
+      cursorRipple.classList.add("click-ripple");
+      setTimeout(() => {
+        cursorRipple.classList.add("hidden");
+        cursorRipple.classList.remove("click-ripple");
+      }, 500);
+    }
+    if (element) {
+      element.classList.add("scale-95");
+      setTimeout(() => element.classList.remove("scale-95"), 150);
+    }
+    setTimeout(resolve, 350);
+  });
+}
+
+function triggerInputFeedback(element) {
+  return new Promise((resolve) => {
+    if (!element) { resolve(); return; }
+    element.classList.add("ring-2", "ring-zinc-950", "dark:ring-zinc-100");
+    setTimeout(() => {
+      element.classList.remove("ring-2", "ring-zinc-950", "dark:ring-zinc-100");
+      resolve();
+    }, 300);
+  });
+}
+
+
+// ==============================================================================
+// 4. CONTROLADORES DE LOS FORMULARIOS DEL PORTAL
+// ==============================================================================
+
+async function handleManualCotizacion(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  clearTimeout(uncompletedQuoteTimer);
+
+  const origen = document.getElementById("cotizOrigen").value;
+  const destino = document.getElementById("cotizDestino").value;
+  const alto = parseFloat(document.getElementById("cotizAlto").value) || 30;
+  const ancho = parseFloat(document.getElementById("cotizAncho").value) || 30;
+  const largo = parseFloat(document.getElementById("cotizLargo").value) || 30;
+  const peso = parseFloat(document.getElementById("cotizPeso").value) || 10;
+  const valor = parseFloat(document.getElementById("cotizValor").value) || 150000;
+  const tipo = document.getElementById("cotizTipo").value || "General";
+
+  const resBox = document.getElementById("resCotizacion");
+  const btn = document.getElementById("btnEjecutarCotizacion");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/cotizar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        origen, destino, alto, ancho, largo,
+        peso_real: peso,
+        valor_declarado: valor,
+        tipo_mercancia: tipo
+      })
+    });
+
+    const data = await res.json();
+    if (resBox) {
+      resBox.classList.remove("hidden");
+      document.getElementById("lblPesoReal").textContent = `${data.peso_real_kg} kg`;
+      document.getElementById("lblPesoVol").textContent = `${data.peso_volumetrico_kg} kg`;
+      document.getElementById("lblPesoFact").textContent = `${data.peso_facturable_kg} kg`;
+      document.getElementById("lblSeguro").textContent = `$${data.desglose.seguro_cop.toLocaleString()} COP`;
+      document.getElementById("lblTotalEstimado").textContent = `$${data.total_estimado_cop.toLocaleString()} COP`;
+      document.getElementById("lblTiempoEstimado").textContent = data.tiempo_entrega_estimado;
+      document.getElementById("badgeTarifaTipo").textContent = `Flete: ${data.tarifa_aplicada_tipo}`;
+    }
+
+    // Registrar evento de cotización completada si el usuario está autenticado
+    if (currentAuthToken) {
+      fetch(`${API_BASE_URL}/api/v1/user/event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentAuthToken}`
+        },
+        body: JSON.stringify({
+          tipo_evento: "COTIZACION_COMPLETADA",
+          descripcion: `Cotización oficial calculada: de ${origen} a ${destino}, ${peso}kg (${largo}x${ancho}x${alto}cm), total $${data.total_estimado_cop.toLocaleString()} COP`,
+          metadatos: { origen, destino, peso, largo, ancho, alto, valor, tipo, total: data.total_estimado_cop }
+        })
+      }).catch(err => console.warn(err));
+    }
+
+  } catch (err) {
+    alert("Error calculando cotización: " + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleManualRastreo(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const guia = document.getElementById("inputGuia").value.trim();
+  if (!guia) return;
+
+  const resBox = document.getElementById("resRastreo");
+  const btn = document.getElementById("btnEjecutarRastreo");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/tracking/${encodeURIComponent(guia)}`);
+    const data = await res.json();
+
+    if (resBox && data.ultimo_evento) {
+      resBox.classList.remove("hidden");
+      document.getElementById("lblRastreoGuia").textContent = data.guia;
+      document.getElementById("badgeRastreoEstado").textContent = `● ${data.ultimo_evento.codigo}`;
+      document.getElementById("lblUltimoEventoDesc").textContent = data.ultimo_evento.descripcion;
+      document.getElementById("lblUbicacionEvento").textContent = `Ubicación: ${data.ultimo_evento.ubicación}`;
+      document.getElementById("lblFechaEvento").textContent = `Fecha: ${data.ultimo_evento.fecha_hora}`;
+
+      // Renderizar Timeline de eventos
+      const timelineSteps = document.getElementById("timelineSteps");
+      if (timelineSteps && data.timeline) {
+        timelineSteps.innerHTML = data.timeline.map(item => `
+          <div class="flex items-center space-x-2 text-[11px] font-mono">
+            <span class="${item.completado ? 'text-emerald-500 font-bold' : 'text-zinc-400'}">${item.completado ? '✔' : '○'}</span>
+            <span class="${item.completado ? 'text-zinc-800 dark:text-zinc-200 font-medium' : 'text-zinc-500'}">${escapeHtml(item.evento)}:</span>
+            <span class="text-zinc-500 truncate">${escapeHtml(item.descripcion)}</span>
+          </div>
+        `).join("");
+      }
+
+      // Registrar evento de rastreo si está logueado
+      if (currentAuthToken) {
+        fetch(`${API_BASE_URL}/api/v1/user/event`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${currentAuthToken}`
+          },
+          body: JSON.stringify({
+            tipo_evento: "CONSULTA_RASTREO",
+            descripcion: `Consulta de rastreo de la guía ${guia}: estado ${data.ultimo_evento.codigo}`,
+            metadatos: { guia, estado: data.ultimo_evento.codigo }
+          })
+        }).catch(err => console.warn(err));
+      }
+    }
+  } catch (err) {
+    alert("Error consultando TMS: " + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleManualPqrs(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const nombre = document.getElementById("pqrsNombre").value;
+  const correo = document.getElementById("pqrsCorreo").value;
+  const tipo = document.getElementById("pqrsTipo").value;
+  const guia = document.getElementById("pqrsGuia").value;
+  const valor = parseFloat(document.getElementById("pqrsValor").value) || 0;
+  const motivo = document.getElementById("pqrsMotivo").value;
+
+  const resBox = document.getElementById("resPqrs");
+  const btn = document.getElementById("btnEjecutarPqrs");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/pqrs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre, correo, tipo, guia,
+        valor_reclamado: valor,
+        motivo
+      })
+    });
+
+    const data = await res.json();
+    if (resBox) {
+      resBox.classList.remove("hidden");
+      document.getElementById("lblPqrsRadicado").textContent = data.radicado;
+      document.getElementById("lblPqrsMensaje").textContent = data.mensaje;
+
+      const boxEscala = document.getElementById("boxPqrsEscalamiento");
+      if (data.requiere_escalamiento_humano) {
+        boxEscala.classList.remove("hidden");
+        document.getElementById("lblPqrsMotivoEscalamiento").textContent = data.motivo_escalamiento;
+      } else {
+        boxEscala.classList.add("hidden");
+      }
+
+      // Registrar evento de PQRS si está logueado
+      if (currentAuthToken) {
+        fetch(`${API_BASE_URL}/api/v1/user/event`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${currentAuthToken}`
+          },
+          body: JSON.stringify({
+            tipo_evento: "RADICACION_PQRS",
+            descripcion: `Radicación de ${tipo} radicado ${data.radicado}: ${motivo.substring(0, 80)}`,
+            metadatos: { radicado: data.radicado, tipo, guia, valor }
+          })
+        }).catch(err => console.warn(err));
+      }
+    }
+  } catch (err) {
+    alert("Error radicando PQRS: " + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+
+// ==============================================================================
+// 5. HELPER ACTIONS PARA EL USUARIO
+// ==============================================================================
+
+function askAgentPrompt(text) {
+  if (inputQuestion) {
+    inputQuestion.value = text;
+    chatForm.dispatchEvent(new Event("submit"));
+  }
+}
+
+function askAgentToDemoAction(actionType) {
+  if (actionType === "cotizar") {
+    askAgentPrompt("Cotízame un envío de Bogotá a Medellín de 10 kilos y medidas 30x30x30 con valor de 200.000 COP");
+  } else if (actionType === "rastrear") {
+    askAgentPrompt("Rastrea la guía TLX-84920194-CO en el TMS y explícame su estado");
+  }
+}
+
+function promptAgentForCurrentWidget(widgetName) {
+  if (widgetName === "cotizador") {
+    askAgentPrompt("Por favor cotiza un paquete de Bogotá a Cali de 5kg medidas 20x20x20 con valor de 100.000 pesos");
+  } else if (widgetName === "rastreo") {
+    askAgentPrompt("Rastrea la guía TLX-84920194-CO");
+  }
+}
+
+function setGuiaQuick(guia) {
+  const inputGuia = document.getElementById("inputGuia");
+  if (inputGuia) {
+    inputGuia.value = guia;
+    handleManualRastreo(new Event("submit"));
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+
+// ==============================================================================
+// 6. MODAL DE ALIMENTAR BASE DE DATOS SQLITE (BACKEND EN CALIENTE)
+// ==============================================================================
+
+if (btnOpenPolicyModal) {
+  btnOpenPolicyModal.addEventListener("click", () => {
+    selectPolicyAction.value = "new";
+    onActionChange();
+    policyModal.classList.remove("hidden");
+  });
+}
+
+if (btnClosePolicyModal) btnClosePolicyModal.addEventListener("click", () => policyModal.classList.add("hidden"));
+if (btnCancelPolicyModal) btnCancelPolicyModal.addEventListener("click", () => policyModal.classList.add("hidden"));
+if (selectPolicyAction) selectPolicyAction.addEventListener("change", onActionChange);
 
 function onActionChange() {
   const val = selectPolicyAction.value;
@@ -473,276 +855,247 @@ function onActionChange() {
       inputPolicySection.value = policy.seccion;
       inputPolicyTitle.value = policy.titulo;
       textareaPolicyContent.value = policy.contenido;
-      inputPolicySection.disabled = true; // No modificar nombre de sección en edición
+      inputPolicySection.disabled = true;
     }
   }
 }
 
-function openEditPolicy(id) {
-  selectPolicyAction.value = id.toString();
-  onActionChange();
-  policyModal.classList.remove("hidden");
+if (btnSubmitPolicy) {
+  btnSubmitPolicy.addEventListener("click", async () => {
+    const action = selectPolicyAction.value;
+    const section = inputPolicySection.value.trim();
+    const title = inputPolicyTitle.value.trim();
+    const content = textareaPolicyContent.value.trim();
+
+    if (!section || !title || !content) {
+      alert("Por favor completa todos los campos.");
+      return;
+    }
+
+    try {
+      let url = `${API_BASE_URL}/policies`;
+      let method = "POST";
+      let body = { seccion: section, titulo: title, contenido: content };
+
+      if (action !== "new") {
+        url = `${API_BASE_URL}/policies/${action}`;
+        method = "PUT";
+        body = { contenido: content, titulo: title };
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) throw new Error("Error en servidor");
+      policyModal.classList.add("hidden");
+      alert("¡Base de Datos actualizada y Agente auto-indexado en caliente!");
+      await checkHealth();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  });
 }
 
-
 // ==============================================================================
-// 5. FLUJO DE CARGA Y AUTO-INDEXACIÓN: SUBIENDO E INDEXANDO
+// 7. BASE DE DATOS GEOGRÁFICA (32 DEPARTAMENTOS, MUNICIPIOS Y PAÍSES)
 // ==============================================================================
 
-btnSubmitPolicy.addEventListener("click", async () => {
-  const action = selectPolicyAction.value;
-  const section = inputPolicySection.value.trim();
-  const title = inputPolicyTitle.value.trim();
-  const content = textareaPolicyContent.value.trim();
+async function loadGeoDatabase() {
+  try {
+    const [depRes, munRes, paisRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/v1/departamentos`),
+      fetch(`${API_BASE_URL}/api/v1/municipios?limit=300`),
+      fetch(`${API_BASE_URL}/api/v1/paises`)
+    ]);
 
-  if (!section || !title || !content) {
-    alert("Por favor completa todos los campos del formulario.");
+    if (depRes.ok) {
+      const depData = await depRes.json();
+      cachedDepartamentos = depData.departamentos || [];
+      populateDepartamentosDropdown();
+    }
+
+    if (munRes.ok) {
+      const munData = await munRes.json();
+      cachedMunicipios = munData.municipios || [];
+    }
+
+    if (paisRes.ok) {
+      const paisData = await paisRes.json();
+      cachedPaises = paisData.paises || [];
+    }
+
+    populateCotizadorSelects();
+    renderGeoResults(cachedMunicipios);
+  } catch (err) {
+    console.warn("[GeoDB] Error cargando base de datos geográfica:", err);
+  }
+}
+
+function populateDepartamentosDropdown() {
+  const select = document.getElementById("selectGeoDepartamento");
+  if (!select) return;
+  select.innerHTML = `<option value="">Todos los Departamentos (32 + D.C.)</option>` +
+    cachedDepartamentos.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+}
+
+function populateCotizadorSelects() {
+  const selOrigen = document.getElementById("cotizOrigen");
+  const selDestino = document.getElementById("cotizDestino");
+  if (!selOrigen || !selDestino) return;
+
+  const troncales = [
+    "Bogotá D.C. (Hub Fontibón)",
+    "Medellín (Hub Rionegro)",
+    "Cali (Hub Yumbo)",
+    "Barranquilla (Hub Malambo)",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales"
+  ];
+
+  const htmlTroncales = troncales.map(t => `<option value="${t}">${t}</option>`).join("");
+  const htmlMunicipios = cachedMunicipios.map(m => 
+    `<option value="${m.municipio} (${m.departamento})">${m.municipio} - ${m.departamento}</option>`
+  ).join("");
+  const htmlPaises = cachedPaises.map(p => 
+    `<option value="${p.pais} (Courier Internacional)">✈️ ${p.pais} [${p.codigo_iso}]</option>`
+  ).join("");
+
+  const fullHtml = `
+    <optgroup label="Ciudades Troncales Principales">
+      ${htmlTroncales}
+    </optgroup>
+    <optgroup label="Municipios y Cabeceras de Colombia (32 Departamentos)">
+      ${htmlMunicipios}
+    </optgroup>
+    <optgroup label="Destinos Internacionales (Courier Express)">
+      ${htmlPaises}
+    </optgroup>
+  `;
+
+  selOrigen.innerHTML = fullHtml;
+  selDestino.innerHTML = fullHtml;
+
+  // Defaults
+  selOrigen.selectedIndex = 0;
+  selDestino.selectedIndex = 1;
+}
+
+function filterGeoDirectorio() {
+  const inputSearch = document.getElementById("inputGeoSearch");
+  const selectDep = document.getElementById("selectGeoDepartamento");
+  const q = (inputSearch ? inputSearch.value.trim().toLowerCase() : "");
+  const selectedDep = (selectDep ? selectDep.value.trim().toLowerCase() : "");
+
+  let filteredMun = cachedMunicipios;
+  if (selectedDep) {
+    filteredMun = filteredMun.filter(m => m.departamento.toLowerCase() === selectedDep);
+  }
+  if (q) {
+    filteredMun = filteredMun.filter(m => 
+      m.municipio.toLowerCase().includes(q) ||
+      m.departamento.toLowerCase().includes(q) ||
+      (m.codigo_dane && m.codigo_dane.includes(q))
+    );
+  }
+
+  // Filtrar también países internacionales si no se especificó un departamento
+  let filteredPaises = [];
+  if (!selectedDep && q) {
+    filteredPaises = cachedPaises.filter(p => 
+      p.pais.toLowerCase().includes(q) ||
+      p.codigo_iso.toLowerCase().includes(q) ||
+      p.continente.toLowerCase().includes(q)
+    );
+  }
+
+  renderGeoResults(filteredMun, filteredPaises);
+}
+
+function renderGeoResults(municipios, paises = []) {
+  const container = document.getElementById("geoResultsContainer");
+  const lblResultados = document.getElementById("lblGeoResultados");
+  if (!container) return;
+
+  const total = municipios.length + paises.length;
+  if (lblResultados) {
+    lblResultados.textContent = `Mostrando ${total} registros de la base geográfica descargada:`;
+  }
+
+  if (total === 0) {
+    container.innerHTML = `
+      <div class="p-3 text-center text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+        No se encontraron registros en la base de datos descargada para ese criterio.
+      </div>
+    `;
     return;
   }
 
-  // 1. Cerrar modal de edición y abrir modal de progreso
-  policyModal.classList.add("hidden");
-  startLoadingModal();
+  const munCards = municipios.map(m => `
+    <div class="p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition">
+      <div>
+        <div class="flex items-center space-x-2">
+          <strong class="font-semibold text-zinc-900 dark:text-zinc-100 text-xs">${escapeHtml(m.municipio)}</strong>
+          <span class="text-[10px] text-zinc-500 font-mono">DANE ${escapeHtml(m.codigo_dane)}</span>
+          <span class="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded">${escapeHtml(m.departamento)}</span>
+        </div>
+        <div class="text-[11px] text-zinc-500 flex items-center space-x-2 mt-0.5">
+          <span>Hub: ${escapeHtml(m.hub_asignado)}</span>
+          <span>•</span>
+          <span class="text-emerald-600 dark:text-emerald-400 font-medium">${escapeHtml(m.tiempo_entrega_std)}</span>
+          <span>•</span>
+          <span>${m.servicio_refrigerado ? '❄️ Termo' : 'Sin frío'}</span>
+        </div>
+      </div>
+      <button type="button" onclick="selectGeoForCotizar('${escapeHtml(m.municipio)}')" class="shrink-0 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 px-2 py-1 rounded bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 transition">
+        Cotizar ↗
+      </button>
+    </div>
+  `).join("");
 
-  try {
-    // FASE 1: Guardar en Base de Datos (Backend puerto 5000)
-    updateLoadingStep(1, 25, "1. Guardando cambio en Base de Datos SQLite...");
-    
-    let url = `${BACKEND_API_URL}/policies`;
-    let method = "POST";
-    let body = { seccion: section, titulo: title, contenido: content };
+  const paisCards = paises.map(p => `
+    <div class="p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/20 flex items-center justify-between">
+      <div>
+        <div class="flex items-center space-x-2">
+          <strong class="font-semibold text-indigo-950 dark:text-indigo-200 text-xs">✈️ ${escapeHtml(p.pais)}</strong>
+          <span class="text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-1.5 py-0.5 rounded font-mono">${escapeHtml(p.codigo_iso)}</span>
+          <span class="text-[10px] text-indigo-600 dark:text-indigo-400">${escapeHtml(p.continente)}</span>
+        </div>
+        <div class="text-[11px] text-zinc-500 flex items-center space-x-2 mt-0.5">
+          <span>Tiempo: ${escapeHtml(p.tiempo_entrega)}</span>
+          <span>•</span>
+          <span>Salida: ${escapeHtml(p.hub_salida)}</span>
+        </div>
+      </div>
+      <button type="button" onclick="askAgentPrompt('¿Cuáles son los requisitos de aduana y tarifas para enviar un paquete a ${escapeHtml(p.pais)}?')" class="shrink-0 text-[11px] font-medium text-indigo-700 dark:text-indigo-300 hover:text-indigo-950 px-2 py-1 rounded bg-indigo-100/70 dark:bg-indigo-900/40 border border-indigo-300 dark:border-indigo-800 transition">
+        Consultar IA ↗
+      </button>
+    </div>
+  `).join("");
 
-    if (action !== "new") {
-      url = `${BACKEND_API_URL}/policies/${action}`;
-      method = "PUT";
-      body = { contenido: content, titulo: title };
-    }
-
-    // FASE 2: Backend notifica al agente
-    setTimeout(() => {
-      updateLoadingStep(2, 55, "2. Backend notificando al Agente RAG vía API...");
-    }, 400);
-
-    // FASE 3: Agente generando embeddings
-    setTimeout(() => {
-      updateLoadingStep(3, 80, "3. Agente regenerando embeddings BGE-M3 en ChromaDB...");
-    }, 800);
-
-    const res = await fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || `Error en Backend: ${res.status}`);
-    }
-
-    const result = await res.json();
-
-    // FASE 4: Completado
-    updateLoadingStep(4, 100, "4. ¡Base Vectorial ChromaDB lista en caliente!");
-    showLoadingSuccess(result);
-
-    // Recargar lista lateral de políticas
-    await loadPolicies();
-
-    // Notificar en el chat sobre la nueva información disponible
-    appendSystemNotificationInChat(section, title);
-
-  } catch (err) {
-    showLoadingError(err.message);
-  }
-});
-
-// Forzar auto-indexación manual
-btnForceSync.addEventListener("click", async () => {
-  startLoadingModal();
-  updateLoadingStep(2, 50, "Solicitando al Agente re-indexar con la BD...");
-  try {
-    const res = await fetch(`${BACKEND_API_URL}/policies/sync`, { method: "POST" });
-    if (!res.ok) throw new Error("Error en sincronización");
-    const data = await res.json();
-    updateLoadingStep(4, 100, "¡Sincronización completada!");
-    showLoadingSuccess(data);
-  } catch (e) {
-    showLoadingError(e.message);
-  }
-});
-
-function startLoadingModal() {
-  loadingModal.classList.remove("hidden");
-  loadingSpinner.classList.remove("hidden");
-  successCheck.classList.add("hidden");
-  loadingTitle.textContent = "Subiendo e Indexando...";
-  loadingSubtitle.textContent = "Conectando con Backend empresarial y Agente RAG...";
-  progressBar.style.width = "5%";
-  progressBar.className = "bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 h-full transition-all duration-300 rounded-full";
-  
-  [step1, step2, step3, step4].forEach(s => {
-    s.className = "text-slate-500 flex items-center space-x-2";
-    s.children[0].textContent = "○";
-  });
+  container.innerHTML = paisCards + munCards;
 }
 
-function updateLoadingStep(stepNum, percent, text) {
-  progressBar.style.width = `${percent}%`;
-  loadingPercentageText.textContent = `${percent}%`;
-  loadingStepText.textContent = text;
-
-  const steps = [step1, step2, step3, step4];
-  for (let i = 0; i < stepNum; i++) {
-    steps[i].className = "text-emerald-400 flex items-center space-x-2";
-    steps[i].children[0].textContent = "✔";
-  }
-  if (stepNum <= 4) {
-    steps[stepNum - 1].className = "text-cyan-400 font-bold flex items-center space-x-2 animate-pulse";
-    steps[stepNum - 1].children[0].textContent = "⏳";
-  }
-}
-
-function showLoadingSuccess(result) {
-  loadingSpinner.classList.add("hidden");
-  successCheck.classList.remove("hidden");
-  loadingTitle.textContent = "¡Indexación Completada!";
-  loadingSubtitle.textContent = "El Agente ya tiene acceso inmediato a la nueva información.";
-
-  // Salir de la modal automáticamente tras 1.2 segundos como se solicitó
-  setTimeout(() => {
-    loadingModal.classList.add("hidden");
-  }, 1300);
-}
-
-function showLoadingError(errMsg) {
-  loadingSpinner.classList.add("hidden");
-  loadingTitle.textContent = "Error en el proceso";
-  loadingSubtitle.textContent = errMsg;
-  progressBar.className = "bg-red-500 h-full w-full rounded-full";
-  setTimeout(() => {
-    loadingModal.classList.add("hidden");
-    alert("Error: " + errMsg);
-  }, 2000);
-}
-
-function appendSystemNotificationInChat(section, title) {
-  const div = document.createElement("div");
-  div.className = "p-3 bg-cyan-950/40 border border-cyan-800/60 rounded-xl text-xs text-cyan-300 text-center my-3 max-w-2xl mx-auto shadow-sm";
-  div.innerHTML = `
-    🎉 <strong>Base de Datos Actualizada:</strong> Se almacenó e indexó <em>"${escapeHtml(section)}"</em>.
-    <br><span class="text-slate-400">El Agente RAG ya aprendió este contenido y puedes preguntarle sobre él.</span>
-  `;
-  chatContainer.appendChild(div);
-  scrollToBottom();
-}
-
-btnRefreshPolicies.addEventListener("click", () => {
-  btnRefreshPolicies.classList.add("animate-spin");
-  checkHealth().finally(() => {
-    setTimeout(() => btnRefreshPolicies.classList.remove("animate-spin"), 500);
-  });
-});
-
-// ==============================================================================
-// 5. LABORATORIO DE BENCHMARKING DE MODELOS
-// ==============================================================================
-
-if (btnOpenBenchmark) {
-  btnOpenBenchmark.addEventListener("click", () => {
-    if (benchmarkModal) benchmarkModal.classList.remove("hidden");
-  });
-}
-
-if (btnCloseBenchmarkModal) {
-  btnCloseBenchmarkModal.addEventListener("click", () => {
-    if (benchmarkModal) benchmarkModal.classList.add("hidden");
-  });
-}
-
-// Botones de preguntas sugeridas para el benchmark
-document.querySelectorAll(".btn-bench-suggest").forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (inputBenchQuestion) {
-      const txt = btn.textContent.trim();
-      if (txt.includes("Turno nocturno")) {
-        inputBenchQuestion.value = "¿Cuál es la duración y horario del turno nocturno de soporte técnico?";
-      } else if (txt.includes("contraseñas")) {
-        inputBenchQuestion.value = "¿Cuál es la longitud mínima de las contraseñas maestras y cada cuánto expiran?";
-      } else if (txt.includes("internet")) {
-        inputBenchQuestion.value = "¿Cuál es el valor del subsidio mensual de conectividad e internet?";
-      } else if (txt.includes("vacaciones")) {
-        inputBenchQuestion.value = "¿Cuántos días de vacaciones anuales remuneradas corresponden y con cuánta antelación deben solicitarse?";
-      } else {
-        inputBenchQuestion.value = txt;
+function selectGeoForCotizar(municipio) {
+  const selDestino = document.getElementById("cotizDestino");
+  if (selDestino) {
+    for (const opt of selDestino.options) {
+      if (opt.value.toLowerCase().includes(municipio.toLowerCase())) {
+        selDestino.value = opt.value;
+        break;
       }
     }
-  });
-});
-
-if (btnRunBenchmark) {
-  btnRunBenchmark.addEventListener("click", async () => {
-    const modelA = selectBenchModelA.value;
-    const modelB = selectBenchModelB.value;
-    const question = inputBenchQuestion.value.trim();
-    if (!question) return;
-
-    benchNameA.textContent = modelA;
-    benchNameB.textContent = modelB;
-    benchTimeA.textContent = "⏱️ Evaluando...";
-    benchTimeB.textContent = "⏱️ Evaluando...";
-    benchBodyA.innerHTML = `<div class="p-4 text-center text-cyan-400 animate-pulse text-xs">⏳ Generando respuesta con ${escapeHtml(modelA)}...</div>`;
-    benchBodyB.innerHTML = `<div class="p-4 text-center text-amber-400 animate-pulse text-xs">⏳ Generando respuesta con ${escapeHtml(modelB)}...</div>`;
-    benchSummaryBanner.classList.add("hidden");
-    btnRunBenchmark.disabled = true;
-    btnRunBenchmark.classList.add("opacity-50");
-
-    try {
-      // Lanzar ambas consultas concurrentemente
-      const callA = fetch(`${AGENT_API_URL}/api/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pregunta: question, session_id: "bench_session_a", modelo: modelA })
-      }).then(r => r.json());
-
-      const callB = fetch(`${AGENT_API_URL}/api/ask`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pregunta: question, session_id: "bench_session_b", modelo: modelB })
-      }).then(r => r.json());
-
-      const [resA, resB] = await Promise.all([callA, callB]);
-
-      // Renderizar resultados del Modelo A
-      const timeA = resA.tiempo_respuesta_segundos || 0;
-      benchTimeA.textContent = `⏱️ ${timeA}s`;
-      benchBodyA.innerHTML = marked.parse(resA.respuesta || "Sin respuesta");
-
-      // Renderizar resultados del Modelo B
-      const timeB = resB.tiempo_respuesta_segundos || 0;
-      benchTimeB.textContent = `⏱️ ${timeB}s`;
-      benchBodyB.innerHTML = marked.parse(resB.respuesta || "Sin respuesta");
-
-      // Comparativa y cálculo de velocidad
-      benchSummaryBanner.classList.remove("hidden");
-      if (timeA <= timeB) {
-        const ratio = (timeB / (timeA || 0.001)).toFixed(1);
-        const diff = (timeB - timeA).toFixed(2);
-        benchSummaryText.textContent = `⚡ ${modelA} fue ${ratio}x más rápido que ${modelB}`;
-        benchSpeedDiffBadge.textContent = `Diferencia: ${diff}s a favor de Modelo A`;
-      } else {
-        const ratio = (timeA / (timeB || 0.001)).toFixed(1);
-        const diff = (timeA - timeB).toFixed(2);
-        benchSummaryText.textContent = `⚡ ${modelB} fue ${ratio}x más rápido que ${modelA}`;
-        benchSpeedDiffBadge.textContent = `Diferencia: ${diff}s a favor de Modelo B`;
-      }
-
-    } catch (err) {
-      alert("Error ejecutando el benchmark: " + err.message);
-    } finally {
-      btnRunBenchmark.disabled = false;
-      btnRunBenchmark.classList.remove("opacity-50");
-    }
-  });
+  }
+  const widget = document.getElementById("widgetCotizador");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 1500);
+  }
 }
 
 function escapeHtml(text) {
@@ -755,5 +1108,446 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
+// ==============================================================================
+// 8. AUTENTICACIÓN SEGURA Y GESTIÓN DE MEMORIA COMPORTAMENTAL (UID)
+// ==============================================================================
+
+function openAuthModal() {
+  const modal = document.getElementById("authModal");
+  if (modal) modal.classList.remove("hidden");
+  const errLogin = document.getElementById("loginErrorMsg");
+  const errReg = document.getElementById("regErrorMsg");
+  if (errLogin) errLogin.classList.add("hidden");
+  if (errReg) errReg.classList.add("hidden");
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById("authModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function switchAuthTab(tab) {
+  const formLogin = document.getElementById("formLogin");
+  const formReg = document.getElementById("formRegister");
+  const tabLogin = document.getElementById("tabAuthLogin");
+  const tabReg = document.getElementById("tabAuthRegister");
+  const title = document.getElementById("authModalTitle");
+
+  if (tab === "login") {
+    if (formLogin) formLogin.classList.remove("hidden");
+    if (formReg) formReg.classList.add("hidden");
+    if (tabLogin) {
+      tabLogin.className = "py-1.5 rounded-md bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs transition";
+    }
+    if (tabReg) {
+      tabReg.className = "py-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition";
+    }
+    if (title) title.textContent = "Iniciar Sesión";
+  } else {
+    if (formLogin) formLogin.classList.add("hidden");
+    if (formReg) formReg.classList.remove("hidden");
+    if (tabReg) {
+      tabReg.className = "py-1.5 rounded-md bg-white dark:bg-zinc-900 text-zinc-950 dark:text-zinc-50 shadow-xs transition";
+    }
+    if (tabLogin) {
+      tabLogin.className = "py-1.5 rounded-md text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition";
+    }
+    if (title) title.textContent = "Crear Cuenta Segura";
+  }
+}
+
+async function handleAuthLogin(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errBox = document.getElementById("loginErrorMsg");
+  const btn = document.getElementById("btnLoginSubmit");
+
+  if (errBox) errBox.classList.add("hidden");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Credenciales incorrectas");
+    }
+
+    currentAuthToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem("tlx_auth_token", currentAuthToken);
+
+    updateAuthUI();
+    closeAuthModal();
+
+    console.log(`[Auth] Sesión iniciada con éxito para ${currentUser.nombre} (UID: ${currentUser.uid})`);
+  } catch (err) {
+    if (errBox) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleAuthRegister(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const nombre = document.getElementById("regNombre").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  const empresa = document.getElementById("regEmpresa").value.trim();
+  const password = document.getElementById("regPassword").value;
+  const errBox = document.getElementById("regErrorMsg");
+  const btn = document.getElementById("btnRegisterSubmit");
+
+  if (errBox) errBox.classList.add("hidden");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, email, password, empresa })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || "Error en el registro");
+    }
+
+    currentAuthToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem("tlx_auth_token", currentAuthToken);
+
+    updateAuthUI();
+    closeAuthModal();
+
+    console.log(`[Auth] Usuario registrado con éxito: ${currentUser.nombre} (UID: ${currentUser.uid})`);
+  } catch (err) {
+    if (errBox) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function checkAuthStatus() {
+  if (!currentAuthToken) {
+    updateAuthUI();
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+      headers: { "Authorization": `Bearer ${currentAuthToken}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      currentUser = data.user;
+      currentUser.cotizaciones_incompletas_count = data.cotizaciones_incompletas_count || 0;
+      updateAuthUI();
+    } else {
+      currentAuthToken = "";
+      currentUser = null;
+      localStorage.removeItem("tlx_auth_token");
+      updateAuthUI();
+    }
+  } catch (err) {
+    console.warn("[Auth] No se pudo validar sesión:", err);
+    updateAuthUI();
+  }
+}
+
+function updateAuthUI() {
+  const btnOpen = document.getElementById("btnOpenAuthModal");
+  const userBar = document.getElementById("userProfileBar");
+  const userName = document.getElementById("userDisplayName");
+  const userAvatar = document.getElementById("userAvatarInitials");
+  const userBadge = document.getElementById("userPendingBadge");
+
+  if (currentUser && currentAuthToken) {
+    if (btnOpen) btnOpen.classList.add("hidden");
+    if (userBar) {
+      userBar.classList.remove("hidden");
+      userBar.classList.add("flex");
+    }
+    if (userName) userName.textContent = currentUser.nombre || "Usuario";
+    if (userAvatar) {
+      const initials = (currentUser.nombre || "US").split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
+      userAvatar.textContent = initials;
+    }
+    if (userBadge) {
+      const cnt = currentUser.cotizaciones_incompletas_count || 0;
+      if (cnt > 0) {
+        userBadge.textContent = `${cnt} pendiente${cnt > 1 ? 's' : ''}`;
+        userBadge.classList.remove("hidden");
+      } else {
+        userBadge.classList.add("hidden");
+      }
+    }
+  } else {
+    if (btnOpen) btnOpen.classList.remove("hidden");
+    if (userBar) {
+      userBar.classList.add("hidden");
+      userBar.classList.remove("flex");
+    }
+  }
+}
+
+async function handleLogout() {
+  if (currentAuthToken) {
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${currentAuthToken}` }
+      });
+    } catch (e) {}
+  }
+  currentAuthToken = "";
+  currentUser = null;
+  localStorage.removeItem("tlx_auth_token");
+  updateAuthUI();
+  closeUserHistoryModal();
+}
+
+async function openUserHistoryModal() {
+  if (!currentAuthToken) {
+    openAuthModal();
+    return;
+  }
+  const modal = document.getElementById("userHistoryModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/user/history`, {
+      headers: { "Authorization": `Bearer ${currentAuthToken}` }
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+      throw new Error(`Error ${res.status}`);
+    }
+
+    const data = await res.json();
+    const user = data.user;
+    currentUser = user;
+
+    document.getElementById("histModalName").textContent = user.nombre || "Usuario";
+    document.getElementById("histModalEmail").textContent = user.email || "";
+    document.getElementById("histModalUid").textContent = `UID: ${user.uid || "--"}`;
+    const initials = (user.nombre || "US").split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
+    document.getElementById("histModalAvatar").textContent = initials;
+
+    // 1. Cotizaciones incompletas
+    const pendingList = document.getElementById("userPendingList");
+    const pendingCount = (data.cotizaciones_incompletas || []).length;
+    document.getElementById("lblPendingCount").textContent = `${pendingCount} guardadas`;
+
+    if (pendingCount === 0) {
+      pendingList.innerHTML = `<div class="p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 text-center text-[11px]">No tienes cotizaciones incompletas pendientes.</div>`;
+    } else {
+      pendingList.innerHTML = data.cotizaciones_incompletas.map(item => {
+        const meta = item.metadatos || {};
+        const fecha = item.creado_en ? new Date(item.creado_en).toLocaleString() : "";
+        const origen = meta.origen || "Bogotá D.C. (Cundinamarca)";
+        const destino = meta.destino || "Medellín (Antioquia)";
+        const peso = meta.peso || meta.peso_real || 10;
+        const largo = meta.largo || 30;
+        const ancho = meta.ancho || 30;
+        const alto = meta.alto || 30;
+        const valor = meta.valor || meta.valor_declarado || 0;
+        const tipo = meta.tipo || meta.tipo_mercancia || "General";
+
+        return `
+          <div class="p-3 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex items-center justify-between gap-3 shadow-xs">
+            <div class="space-y-1 min-w-0">
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-zinc-900 dark:text-zinc-100 truncate text-xs">${escapeHtml(origen)} ➔ ${escapeHtml(destino)}</span>
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0 font-bold">${peso} kg</span>
+              </div>
+              <div class="text-[11px] text-zinc-600 dark:text-zinc-400">
+                ${largo}x${ancho}x${alto} cm • $${Number(valor).toLocaleString()} COP • ${escapeHtml(tipo)}
+              </div>
+              <div class="text-[10px] text-zinc-400 font-mono">${fecha}</div>
+            </div>
+            <button type="button" onclick="restoreQuoteToForm('${escapeHtml(origen)}', '${escapeHtml(destino)}', ${peso}, ${largo}, ${ancho}, ${alto}, ${valor}, '${escapeHtml(tipo)}')" class="shrink-0 text-xs font-semibold bg-amber-600 hover:bg-amber-700 active:scale-95 text-white px-3 py-1.5 rounded-md transition shadow-xs flex items-center gap-1">
+              <span>Restaurar</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // 2. Historial de eventos SQLite
+    const eventsList = document.getElementById("userEventsList");
+    const events = data.eventos_recientes || [];
+    if (events.length === 0) {
+      eventsList.innerHTML = `<div class="p-2 text-zinc-400 italic text-[11px]">No hay actividad reciente registrada en SQLite.</div>`;
+    } else {
+      eventsList.innerHTML = events.map(ev => {
+        const fecha = ev.creado_en ? new Date(ev.creado_en).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+        let badgeColor = "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300";
+        if (ev.tipo_evento === "COTIZACION_INCOMPLETA") badgeColor = "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300";
+        else if (ev.tipo_evento === "COTIZACION_COMPLETADA") badgeColor = "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300";
+        else if (ev.tipo_evento === "QUERY_CHAT") badgeColor = "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300";
+
+        return `
+          <div class="p-2 rounded bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 truncate">
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${badgeColor}">${escapeHtml(ev.tipo_evento)}</span>
+              <span class="text-zinc-700 dark:text-zinc-300 text-[11px] truncate">${escapeHtml(ev.descripcion)}</span>
+            </div>
+            <span class="text-[10px] text-zinc-400 shrink-0 font-mono">${fecha}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // 3. Memorias Vectoriales en ChromaDB
+    const vectorList = document.getElementById("userVectorMemoriesList");
+    const memories = data.memorias_vectoriales || [];
+    if (memories.length === 0) {
+      vectorList.innerHTML = `<div class="p-2 text-zinc-400 italic text-[11px]">No hay fragmentos vectoriales almacenados aún.</div>`;
+    } else {
+      vectorList.innerHTML = memories.map(m => `
+        <div class="p-2.5 rounded bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 space-y-1">
+          <div class="flex items-center justify-between text-[10px] font-mono text-zinc-500">
+            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">🧬 Embedding Ollama (bge-m3)</span>
+            <span>${escapeHtml(m.metadata?.tipo_evento || "MEMORIA")}</span>
+          </div>
+          <p class="text-zinc-700 dark:text-zinc-300 text-[11px] font-mono leading-relaxed">${escapeHtml(m.documento)}</p>
+        </div>
+      `).join("");
+    }
+
+  } catch (err) {
+    console.error("Error cargando historial de usuario:", err);
+  }
+}
+
+function closeUserHistoryModal() {
+  const modal = document.getElementById("userHistoryModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function restoreQuoteToForm(origen, destino, peso, largo, ancho, alto, valor, tipo) {
+  closeUserHistoryModal();
+  if (origen) {
+    const selO = document.getElementById("cotizOrigen");
+    if (selO) selO.value = origen;
+  }
+  if (destino) {
+    const selD = document.getElementById("cotizDestino");
+    if (selD) selD.value = destino;
+  }
+  if (peso) document.getElementById("cotizPeso").value = peso;
+  if (largo) document.getElementById("cotizLargo").value = largo;
+  if (ancho) document.getElementById("cotizAncho").value = ancho;
+  if (alto) document.getElementById("cotizAlto").value = alto;
+  if (valor) document.getElementById("cotizValor").value = valor;
+  if (tipo) document.getElementById("cotizTipo").value = tipo;
+
+  const widget = document.getElementById("widgetCotizador");
+  if (widget) {
+    widget.scrollIntoView({ behavior: "smooth", block: "center" });
+    widget.classList.add("agent-focus-pulse");
+    setTimeout(() => widget.classList.remove("agent-focus-pulse"), 1800);
+  }
+}
+
+function schedulePendingQuoteTracking() {
+  if (!currentAuthToken) return;
+
+  const origen = document.getElementById("cotizOrigen")?.value;
+  const destino = document.getElementById("cotizDestino")?.value;
+  const alto = parseFloat(document.getElementById("cotizAlto")?.value) || 0;
+  const ancho = parseFloat(document.getElementById("cotizAncho")?.value) || 0;
+  const largo = parseFloat(document.getElementById("cotizLargo")?.value) || 0;
+  const peso = parseFloat(document.getElementById("cotizPeso")?.value) || 0;
+  const valor = parseFloat(document.getElementById("cotizValor")?.value) || 0;
+  const tipo = document.getElementById("cotizTipo")?.value || "";
+
+  if (!origen || !destino || peso <= 0) return;
+
+  clearTimeout(uncompletedQuoteTimer);
+  uncompletedQuoteTimer = setTimeout(async () => {
+    const quoteKey = `${origen}-${destino}-${peso}-${largo}x${ancho}x${alto}-${valor}`;
+    if (lastTrackedQuotePayload === quoteKey) return;
+    lastTrackedQuotePayload = quoteKey;
+
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/user/event`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentAuthToken}`
+        },
+        body: JSON.stringify({
+          tipo_evento: "COTIZACION_INCOMPLETA",
+          descripcion: `Intento de cotización no completado: envío de ${origen} a ${destino}, peso ${peso}kg (${largo}x${ancho}x${alto}cm), valor $${valor.toLocaleString()} COP, tipo: ${tipo}`,
+          metadatos: { origen, destino, peso, largo, ancho, alto, valor, tipo }
+        })
+      });
+      console.log("[UserMemory] Cotización incompleta guardada en SQLite y ChromaDB.");
+      if (currentUser) {
+        currentUser.cotizaciones_incompletas_count = (currentUser.cotizaciones_incompletas_count || 0) + 1;
+        updateAuthUI();
+      }
+    } catch (e) {
+      console.warn("No se pudo registrar intento de cotización:", e);
+    }
+  }, 3500);
+}
+
+function setupQuoteInputTracking() {
+  const fields = ["cotizOrigen", "cotizDestino", "cotizAlto", "cotizAncho", "cotizLargo", "cotizPeso", "cotizValor", "cotizTipo"];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", schedulePendingQuoteTracking);
+      el.addEventListener("change", schedulePendingQuoteTracking);
+    }
+  });
+}
+
+// Sincronizador con Obsidian Vault
+async function syncObsidianVault() {
+  const btn = document.getElementById("btnSyncObsidian");
+  const origHtml = btn ? btn.innerHTML : "";
+  if (btn) btn.innerHTML = `<span>Sincronizando...</span>`;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/obsidian/sync`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ ¡Sincronizado con tu Obsidian Vault exitosamente!\nPuedes abrir Obsidian para explorar el Dashboard, los usuarios, cotizaciones y el Canvas.");
+    } else {
+      alert("⚠️ Error al sincronizar con Obsidian: " + (data.detail || data.mensaje));
+    }
+  } catch (err) {
+    alert("Error de conexión al sincronizar con Obsidian: " + err.message);
+  } finally {
+    if (btn) btn.innerHTML = origHtml;
+  }
+}
+
 // Iniciar al cargar la ventana
-window.addEventListener("DOMContentLoaded", checkHealth);
+window.addEventListener("DOMContentLoaded", () => {
+  checkHealth();
+  checkAuthStatus();
+  loadGeoDatabase();
+  setupQuoteInputTracking();
+});

@@ -24,3 +24,6 @@ Thumbs.db
 *.db
 *.sqlite
 *.sqlite3
+
+# Túneles y URLs temporales
+.tunnel_url

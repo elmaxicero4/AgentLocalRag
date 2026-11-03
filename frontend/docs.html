@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-white text-zinc-950 antialiased selection:bg-zinc-200 selection:text-zinc-900">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentLocalRag - Documentación Oficial & Dev Portal</title>
+  
+  <!-- Inter & JetBrains Mono Fonts (shadcn standard) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            border: 'rgb(228 228 231)', // zinc-200
+            input: 'rgb(228 228 231)',
+            ring: 'rgb(24 24 27)', // zinc-900
+            background: 'rgb(255 255 255)', // white
+            foreground: 'rgb(9 9 11)', // zinc-950
+            primary: {
+              DEFAULT: 'rgb(24 24 27)', // zinc-900
+              foreground: 'rgb(250 250 250)',
+            },
+            secondary: {
+              DEFAULT: 'rgb(244 244 245)', // zinc-100
+              foreground: 'rgb(24 24 27)',
+            },
+            muted: {
+              DEFAULT: 'rgb(244 244 245)',
+              foreground: 'rgb(113 113 122)', // zinc-500
+            },
+            accent: {
+              DEFAULT: 'rgb(244 244 245)',
+              foreground: 'rgb(24 24 27)',
+            },
+            card: {
+              DEFAULT: 'rgb(255 255 255)',
+              foreground: 'rgb(9 9 11)',
+            },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Prism.js para resaltado de código -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+
+  <style>
+    body { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgb(244 244 245); }
+    ::-webkit-scrollbar-thumb { background: rgb(212 212 216); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgb(161 161 170); }
+    pre { margin: 0 !important; background: transparent !important; }
+    code { font-family: 'JetBrains Mono', monospace !important; }
+  </style>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+  </script>
+</head>
+<body class="min-h-full flex flex-col bg-white dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50 font-sans">
+
+  <!-- ==============================================================================
+       SHADCN NAVBAR (TEMA BLANCO)
+  ============================================================================== -->
+  <header class="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <div class="max-w-7xl mx-auto flex h-14 items-center justify-between px-6">
+      
+      <!-- Logo y Brand -->
+      <div class="flex items-center space-x-4">
+        <a href="/docs-portal" class="flex items-center space-x-2.5 group">
+          <div class="h-6 w-6 rounded-md bg-zinc-900 flex items-center justify-center text-white font-bold text-xs tracking-tighter shadow-sm">
+            TLX
+          </div>
+          <span class="font-semibold text-sm tracking-tight text-zinc-900 group-hover:text-zinc-600 transition-colors">
+            TransLogix Express <span class="text-zinc-400 font-normal text-xs ml-1">/ docs</span>
+          </span>
+        </a>
+
+        <div class="h-4 w-px bg-zinc-200 hidden sm:block"></div>
+        <span class="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
+          v3.0.0
+        </span>
+        <span class="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+          ● RAG TransLogix + TMS + Backend
+        </span>
+      </div>
+
+      <!-- Navegación Central & Botones de Acción -->
+      <div class="flex items-center space-x-3 text-xs">
+        <a href="#ai-prompt" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
+          Prompt para IA
+        </a>
+        <a href="#playground" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
+          Playground
+        </a>
+        <a href="#endpoints" class="text-zinc-600 hover:text-zinc-950 font-medium transition-colors hidden md:inline">
+          Endpoints
+        </a>
+
+        <!-- Botón docs.md Puro -->
+        <a href="/docs.md" target="_blank" class="inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors shadow-sm gap-1.5">
+          <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>docs.md</span>
+        </a>
+
+        <!-- Botón Chat UI -->
+        <a href="/" target="_blank" class="inline-flex items-center justify-center rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 transition-colors shadow-sm gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <span>Chat App</span>
+        </a>
+
+        <!-- Botón Toggle de Tema (Blanco / Oscuro) -->
+        <button id="btnThemeToggle" onclick="toggleTheme()" class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-xs" title="Cambiar tema (Blanco / Oscuro)">
+          <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==============================================================================
+       SHADCN HOST & TUNNEL SELECTOR BAR (TEMA BLANCO)
+  ============================================================================== -->
+  <div class="border-b border-zinc-200 bg-zinc-50/70">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      
+      <!-- Selector de Host estilo shadcn Tabs -->
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-xs font-semibold text-zinc-600">Host Activo:</span>
+        <div class="inline-flex h-8 items-center justify-center rounded-md bg-zinc-200/60 p-1 text-zinc-600 border border-zinc-200">
+          <button id="btnHostLocal" onclick="setBaseUrlMode('local')" class="inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all bg-white text-zinc-900 shadow-sm">
+            Localhost (8000)
+          </button>
+          <button id="btnHostTunnel" onclick="setBaseUrlMode('tunnel')" class="inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950">
+            Túnel Cloudflare
+          </button>
+        </div>
+
+        <!-- URL Input shadcn -->
+        <div class="flex items-center space-x-1.5">
+          <input id="inputActiveBaseUrl" type="text" class="h-8 rounded-md border border-zinc-200 bg-white px-3 text-xs text-zinc-900 font-mono w-64 md:w-80 focus:outline-none focus:ring-1 focus:ring-zinc-950 transition shadow-sm" value="http://localhost:8000" onchange="updateBaseUrl(this.value)">
+          <button onclick="copyActiveBaseUrl()" class="h-8 inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-2.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 hover:text-zinc-950 transition-colors shadow-sm" title="Copiar URL">
+            <svg class="w-3.5 h-3.5 mr-1 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="copyUrlLabel">Copiar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Health Pill -->
+      <div class="flex items-center space-x-3 text-xs">
+        <div class="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-700 shadow-sm space-x-1.5">
+          <span id="healthDot" class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="healthText" class="text-zinc-800 font-medium">Conectado (200 OK)</span>
+          <span id="healthLatency" class="text-zinc-500 text-[10px]"></span>
+        </div>
+        <span class="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-zinc-600 font-mono text-[11px] shadow-sm hidden sm:inline-flex">
+          Modelo: <strong id="activeModelBadge" class="text-zinc-900 ml-1">qwen2.5-coder:14b</strong>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       CONTENIDO PRINCIPAL SHADCN BLANCO
+  ============================================================================== -->
+  <main class="max-w-7xl w-full mx-auto px-6 py-10 space-y-12 flex-1 bg-white">
+    
+    <!-- HERO SHADCN BLANCO -->
+    <div class="space-y-4">
+      <div class="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
+        <span class="text-zinc-900 font-semibold mr-1.5">Arquitectura Unificada</span> Túnel HTTPS para RAG + Backend
+      </div>
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-zinc-950">
+        Documentación Técnica de Integración
+      </h1>
+      <p class="text-zinc-600 text-sm md:text-base max-w-3xl leading-relaxed">
+        Guía oficial para consumir el servicio <span class="text-zinc-900 font-medium">AgentLocalRag</span> desde tu frontend o mediante agentes de IA asistidos (<strong class="text-zinc-950">Cursor, Antigravity, Claude Code</strong>). El agente responde con un objeto JSON estructurado con el mensaje natural y citas documentales ordenadas.
+      </p>
+    </div>
+
+    <!-- ==============================================================================
+         SHADCN CARD: PROMPT LISTO PARA AGENTES DE IA (CURSOR / CLAUDE / ANTIGRAVITY)
+    ============================================================================== -->
+    <section id="ai-prompt" class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight text-zinc-950 flex items-center gap-2">
+            <span>🤖 Prompt para Agentes de IA</span>
+            <span class="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-mono text-zinc-700">
+              Cursor • Antigravity • Claude Code
+            </span>
+          </h2>
+          <p class="text-xs text-zinc-500">Copia y pega este bloque en el chat de tu agente de código para que integre la API en tu frontend.</p>
+        </div>
+        <button onclick="copyAiPrompt()" class="h-8 inline-flex items-center justify-center rounded-md bg-zinc-900 px-3 text-xs font-medium text-white hover:bg-zinc-800 transition-colors shadow-sm gap-1.5 active:scale-95">
+          <svg class="w-3.5 h-3.5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span id="btnCopyPromptLabel">Copiar Prompt</span>
+        </button>
+      </div>
+
+      <!-- shadcn Code Card -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-950 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-mono text-zinc-400">
+          <div class="flex items-center space-x-2">
+            <span class="h-2 w-2 rounded-full bg-zinc-600"></span>
+            <span>ai_prompt.md</span>
+          </div>
+          <span class="text-[11px] text-zinc-400 font-mono">Inyección dinámica con la URL activa</span>
+        </div>
+        <div class="p-4 overflow-x-auto text-xs font-mono max-h-72 overflow-y-auto">
+          <pre><code id="aiPromptCodeDisplay" class="language-markdown"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================================
+         SHADCN CARD: ESPECIFICACIÓN DEL CONTRATO JSON DEL AGENTE
+    ============================================================================== -->
+    <section class="space-y-4">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight text-zinc-950">
+          Estructura del JSON Retornado por el Agente (`POST /api/ask`)
+        </h2>
+        <p class="text-xs text-zinc-500">Diseñado con el estándar JSend Envelope: mensaje natural limpio, citas tipadas y metadatos separados.</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- JSON Preview -->
+        <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4 font-mono text-xs overflow-x-auto max-h-96 overflow-y-auto shadow-sm">
+          <pre><code class="language-json">{
+  "success": true,
+  "status": "success",
+  "data": {
+    "mensaje": "Hola. Según el Manual de Políticas de AgentLocalRag, el turno nocturno es de 8 horas, operando de 22:00 a 06:00.",
+    "pregunta": "¿Cuál es la duración del turno nocturno?",
+    "fuentes": [
+      {
+        "id": 1,
+        "archivo": "manual_corporativo.txt",
+        "documento": "manual_corporativo.txt",
+        "seccion": "1. JORNADA LABORAL Y HORARIOS",
+        "fragmento": "1.2. El equipo de soporte técnico opera en turnos...",
+        "score": 0.3387,
+        "relevancia_porcentaje": "33.87%"
+      }
+    ],
+    "total_fuentes": 1,
+    "tiene_fuentes": true
+  },
+  "metadata": {
+    "modelo": "qwen2.5-coder:14b",
+    "session_id": "default",
+    "tiempo_respuesta_segundos": 3.98,
+    "timestamp": "2026-11-03T16:08:01+00:00"
+  },
+  "error": null
+}</code></pre>
+        </div>
+
+        <!-- Explicación de Campos shadcn Table -->
+        <div class="rounded-xl border border-zinc-200 bg-zinc-50/60 p-5 space-y-3 flex flex-col justify-between shadow-sm">
+          <div class="space-y-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-zinc-700">Campos Principales para Frontend:</h3>
+            <ul class="space-y-2 text-xs text-zinc-800">
+              <li class="flex items-start gap-2">
+                <code class="text-zinc-900 bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-[11px] shadow-xs">data.mensaje</code>
+                <span class="text-zinc-600">Texto natural limpio generado por el modelo 14B listo para renderizar en la burbuja de chat.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <code class="text-zinc-900 bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-[11px] shadow-xs">data.tiene_fuentes</code>
+                <span class="text-zinc-600">Booleano (<code class="text-zinc-900">true/false</code>). Si es <code class="text-zinc-900">true</code>, despliega el acordeón de citas. Si es <code class="text-zinc-900">false</code> (tema fuera de alcance), no renderiza fuentes.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <code class="text-zinc-900 bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-[11px] shadow-xs">data.fuentes</code>
+                <span class="text-zinc-600">Array con <code class="text-zinc-900">documento</code>, <code class="text-zinc-900">seccion</code>, <code class="text-zinc-900">relevancia_porcentaje</code> y el <code class="text-zinc-900">fragmento</code> textual exacto.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <code class="text-zinc-900 bg-white border border-zinc-200 px-1.5 py-0.5 rounded font-mono text-[11px] shadow-xs">metadata</code>
+                <span class="text-zinc-600">Metadatos de latencia (<code class="text-zinc-900">tiempo_respuesta_segundos</code>), modelo activo (<code class="text-zinc-900">qwen2.5-coder:14b</code>) y fecha ISO.</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="rounded-lg border border-zinc-200 bg-white p-3 text-[11px] text-zinc-600 font-mono shadow-xs">
+            💡 <strong>Tip para React:</strong> Puedes desestructurar directamente con: <code class="text-zinc-950 font-bold">const { data, metadata } = await res.json();</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================================
+         SHADCN CARD: PLAYGROUND INTERACTIVO EN VIVO (TEMA BLANCO)
+    ============================================================================== -->
+    <section id="playground" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight text-zinc-950">
+            Playground Interactivo en Vivo
+          </h2>
+          <p class="text-xs text-zinc-500">Ejecuta peticiones reales contra el Agente RAG o contra la base de datos empresarial SQLite.</p>
+        </div>
+        <span class="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-mono text-zinc-700 shadow-xs">
+          Target: <span id="playgroundTargetUrl" class="text-zinc-950 ml-1 font-semibold">http://localhost:8000</span>
+        </span>
+      </div>
+
+      <!-- shadcn Tabs Bar (Tema Blanco) -->
+      <div class="inline-flex h-9 items-center justify-start rounded-lg bg-zinc-100 p-1 text-zinc-600 border border-zinc-200 gap-1 shadow-xs">
+        <button onclick="switchPlaygroundTab('ask')" id="tabBtn-ask" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all bg-white text-zinc-950 shadow-sm gap-1.5">
+          <span class="font-mono text-[10px] text-emerald-600 font-bold">POST</span> /api/ask (RAG)
+        </button>
+        <button onclick="switchPlaygroundTab('policies-get')" id="tabBtn-policies-get" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950 gap-1.5">
+          <span class="font-mono text-[10px] text-blue-600 font-bold">GET</span> /policies (BD)
+        </button>
+        <button onclick="switchPlaygroundTab('policies-post')" id="tabBtn-policies-post" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950 gap-1.5">
+          <span class="font-mono text-[10px] text-purple-600 font-bold">POST</span> /policies (Crear)
+        </button>
+        <button onclick="switchPlaygroundTab('models')" id="tabBtn-models" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950 gap-1.5">
+          <span class="font-mono text-[10px] text-zinc-500 font-bold">GET</span> /api/models
+        </button>
+        <button onclick="switchPlaygroundTab('health')" id="tabBtn-health" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950 gap-1.5">
+          <span class="font-mono text-[10px] text-zinc-500 font-bold">GET</span> /health
+        </button>
+      </div>
+
+      <!-- Playground Layout (2 Columnas: Formulario + Respuesta) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
+        
+        <!-- Formulario Izquierda -->
+        <div class="lg:col-span-5 space-y-4">
+          
+          <!-- TAB /api/ask -->
+          <div id="pgTabContent-ask" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1.5">Preguntas Sugeridas:</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="setPresetQuestion('¿Cuál es la duración del turno nocturno de soporte técnico?')" class="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] text-zinc-800 hover:bg-zinc-100 transition shadow-xs">
+                  🌙 Turno Nocturno
+                </button>
+                <button type="button" onclick="setPresetQuestion('¿Cuántos días de permiso se otorgan por matrimonio?')" class="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] text-zinc-800 hover:bg-zinc-100 transition shadow-xs">
+                  💍 Matrimonio
+                </button>
+                <button type="button" onclick="setPresetQuestion('¿Cuánto es el límite para reembolso de libros técnicos?')" class="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] text-zinc-800 hover:bg-zinc-100 transition shadow-xs">
+                  📚 Libros Técnicos
+                </button>
+                <button type="button" onclick="setPresetQuestion('¿Cómo preparar una paella valenciana?')" class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700 hover:bg-rose-100 transition shadow-xs" title="Prueba de guardrail fuera de alcance">
+                  🥘 Fuera de Alcance
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1.5">Pregunta (string):</label>
+              <textarea id="pgAskPregunta" rows="3" class="w-full rounded-md border border-zinc-200 bg-white p-2.5 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-950 transition shadow-xs">¿Cuál es la duración del turno nocturno de soporte técnico?</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-zinc-700 mb-1">Session ID:</label>
+                <input id="pgAskSessionId" type="text" class="w-full h-8 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-900 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-950 shadow-xs" value="frontend_dev_1">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-zinc-700 mb-1">Modelo Ollama:</label>
+                <select id="pgAskModelo" class="w-full h-8 rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 font-mono focus:outline-none focus:ring-1 focus:ring-zinc-950 shadow-xs">
+                  <option value="">(qwen2.5-coder:14b Activo)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <input id="pgAskReset" type="checkbox" class="h-3.5 w-3.5 rounded border-zinc-300 bg-white text-zinc-900 focus:ring-zinc-950">
+              <label for="pgAskReset" class="text-xs text-zinc-600 select-none">
+                Reiniciar memoria conversacional (<code class="text-zinc-900">reset_history: true</code>)
+              </label>
+            </div>
+          </div>
+
+          <!-- TAB /policies (GET) -->
+          <div id="pgTabContent-policies-get" class="space-y-3 hidden">
+            <p class="text-xs text-zinc-600">
+              Consulta la base de datos empresarial SQLite del Backend y retorna todas las normativas vigentes.
+            </p>
+            <div class="p-3 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-mono text-zinc-800">
+              Método: <span class="text-emerald-600 font-bold">GET /policies</span><br>
+              Parámetros: Ninguno requerido.
+            </div>
+          </div>
+
+          <!-- TAB /policies (POST) -->
+          <div id="pgTabContent-policies-post" class="space-y-3 hidden">
+            <p class="text-xs text-zinc-600">
+              Crea una nueva política en la BD SQLite y <strong class="text-zinc-900">auto-indexa en caliente</strong> la memoria del agente.
+            </p>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Sección:</label>
+              <input id="pgPolicySeccion" type="text" class="w-full h-8 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-900 font-mono shadow-xs" value="6. POLÍTICA DE TELETRABAJO">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Título:</label>
+              <input id="pgPolicyTitulo" type="text" class="w-full h-8 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-900 font-mono shadow-xs" value="Equipamiento Remoto">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Contenido:</label>
+              <textarea id="pgPolicyContenido" rows="2" class="w-full rounded-md border border-zinc-200 bg-white p-2 text-xs text-zinc-900 shadow-xs">6.1. La empresa asignará monitor secundario y silla ergonómica para empleados remotos.</textarea>
+            </div>
+          </div>
+
+          <!-- TAB /api/models -->
+          <div id="pgTabContent-models" class="space-y-3 hidden">
+            <p class="text-xs text-zinc-600">
+              Lista los modelos de lenguaje instalados en Ollama local con tamaño en GB y presets sugeridos.
+            </p>
+          </div>
+
+          <!-- TAB /health -->
+          <div id="pgTabContent-health" class="space-y-3 hidden">
+            <p class="text-xs text-zinc-600">
+              Chequeo de salud del agente, fragmentos activos en ChromaDB y modelo en inferencia.
+            </p>
+          </div>
+
+          <!-- Botón de Ejecución shadcn Primary Button -->
+          <button id="btnExecutePlayground" onclick="executeCurrentPlaygroundTab()" class="w-full h-9 rounded-md bg-zinc-900 px-4 text-xs font-medium text-white hover:bg-zinc-800 transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+            <svg id="pgExecuteIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span id="pgExecuteText">Ejecutar Petición</span>
+          </button>
+        </div>
+
+        <!-- Visor Derecha -->
+        <div class="lg:col-span-7 flex flex-col space-y-3">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="font-semibold text-zinc-700">Respuesta:</span>
+              <span id="pgResStatusBadge" class="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-mono text-zinc-600">
+                Esperando...
+              </span>
+              <span id="pgResTimeBadge" class="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-mono text-zinc-600">
+                0.00s
+              </span>
+            </div>
+            <button onclick="copyPlaygroundResponseJson()" class="text-zinc-600 hover:text-zinc-950 transition-colors flex items-center gap-1 text-[11px] font-medium">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <span id="lblCopyPgJson">Copiar JSON</span>
+            </button>
+          </div>
+
+          <!-- Caja de Respuesta Formateada Visual -->
+          <div id="pgVisualCard" class="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 space-y-3 min-h-[140px] flex flex-col justify-center shadow-xs">
+            <div id="pgEmptyPlaceholder" class="text-center py-6 text-zinc-500 text-xs">
+              👈 Presiona <strong class="text-zinc-900">"Ejecutar Petición"</strong> para probar la respuesta en tiempo real.
+            </div>
+            
+            <div id="pgAnswerContainer" class="hidden space-y-3">
+              <div class="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                <span>Mensaje Natural (`data.mensaje`):</span>
+              </div>
+              <div id="pgAnswerText" class="text-sm text-zinc-900 leading-relaxed bg-white p-3 rounded-md border border-zinc-200 shadow-xs"></div>
+              
+              <div id="pgSourcesContainer" class="hidden space-y-2 pt-2 border-t border-zinc-200">
+                <span class="text-xs font-semibold text-zinc-700 flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  Fuentes y Citas (`data.fuentes`):
+                </span>
+                <div id="pgSourcesList" class="space-y-1.5"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw JSON -->
+          <div class="space-y-1">
+            <span class="text-[11px] font-mono text-zinc-500 font-semibold">JSON Raw de Respuesta:</span>
+            <div class="max-h-56 overflow-y-auto rounded-md border border-zinc-800 bg-zinc-950 p-3 text-xs font-mono shadow-xs">
+              <pre><code id="pgRawJson" class="language-json">{
+  "status": "ready",
+  "hint": "Ejecuta una petición para inspeccionar el JSON estructurado."
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================================
+         SHADCN CARD: CÓDIGO DE INTEGRACIÓN PARA EL FRONTEND (TEMA BLANCO)
+    ============================================================================== -->
+    <section id="endpoints" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight text-zinc-950">
+            Código de Integración para el Frontend
+          </h2>
+          <p class="text-xs text-zinc-500">Implementaciones listas para copiar en React, TypeScript, Fetch o Axios.</p>
+        </div>
+      </div>
+
+      <!-- Tabs de Código -->
+      <div class="inline-flex h-9 items-center justify-start rounded-lg bg-zinc-100 p-1 text-zinc-600 border border-zinc-200 gap-1 shadow-xs">
+        <button onclick="switchCodeTab('react-hook')" id="codeTabBtn-react-hook" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all bg-white text-zinc-950 shadow-sm">
+          ⚛️ React Hook (TS)
+        </button>
+        <button onclick="switchCodeTab('fetch')" id="codeTabBtn-fetch" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950">
+          Native Fetch (JS)
+        </button>
+        <button onclick="switchCodeTab('axios')" id="codeTabBtn-axios" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950">
+          Axios Client (TS)
+        </button>
+        <button onclick="switchCodeTab('curl')" id="codeTabBtn-curl" class="inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950">
+          cURL (Terminal)
+        </button>
+      </div>
+
+      <div class="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm">
+        <div class="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-mono text-zinc-400">
+          <div class="flex items-center space-x-2">
+            <span class="h-2 w-2 rounded-full bg-zinc-600"></span>
+            <span id="codeFileTitle">useAgentChat.ts</span>
+          </div>
+          <button onclick="copyCurrentCodeSnippet()" class="h-7 inline-flex items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors gap-1 active:scale-95">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            <span id="btnCopySnippetLabel">Copiar Código</span>
+          </button>
+        </div>
+        <div class="p-4 overflow-x-auto text-xs font-mono max-h-96 overflow-y-auto">
+          <pre><code id="snippetCodeDisplay" class="language-typescript"></code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==============================================================================
+       SHADCN FOOTER BLANCO
+  ============================================================================== -->
+  <footer class="border-t border-zinc-200 bg-zinc-50/80 py-6 text-center text-xs text-zinc-500">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <span>AgentLocalRag • Host Unificado (Agente RAG + Backend de Negocio)</span>
+      <div class="flex items-center space-x-4">
+        <a href="/docs.md" target="_blank" class="hover:text-zinc-900 transition-colors">docs.md Puro</a>
+        <a href="/health" target="_blank" class="hover:text-zinc-900 transition-colors">Health Check</a>
+        <a href="/docs" target="_blank" class="hover:text-zinc-900 transition-colors">Swagger UI</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==============================================================================
+       LÓGICA JAVASCRIPT DEL PORTAL
+  ============================================================================== -->
+  <script>
+    let activeBaseUrl = window.location.origin.startsWith('http') && window.location.port !== '5001'
+      ? window.location.origin
+      : 'http://localhost:8000';
+    let detectedTunnelUrl = null;
+    let currentCodeTab = 'react-hook';
+    let currentPgTab = 'ask';
+    let availableModels = [];
+
+    const inputActiveBaseUrl = document.getElementById('inputActiveBaseUrl');
+    const playgroundTargetUrl = document.getElementById('playgroundTargetUrl');
+    const healthDot = document.getElementById('healthDot');
+    const healthText = document.getElementById('healthText');
+    const healthLatency = document.getElementById('healthLatency');
+    const activeModelBadge = document.getElementById('activeModelBadge');
+    const pgAskModelo = document.getElementById('pgAskModelo');
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      inputActiveBaseUrl.value = activeBaseUrl;
+      playgroundTargetUrl.textContent = activeBaseUrl;
+      
+      await fetchTunnelInfo();
+      await checkHealth();
+      await loadModels();
+      renderAiPrompt();
+      renderCodeSnippet();
+    });
+
+    async function fetchTunnelInfo() {
+      try {
+        const res = await fetch(`${activeBaseUrl}/api/tunnel-info`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tunnel_url) {
+            detectedTunnelUrl = data.tunnel_url;
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo consultar /api/tunnel-info:', e);
+      }
+    }
+
+    function setBaseUrlMode(mode) {
+      const btnLocal = document.getElementById('btnHostLocal');
+      const btnTunnel = document.getElementById('btnHostTunnel');
+
+      if (mode === 'local') {
+        activeBaseUrl = 'http://localhost:8000';
+        btnLocal.className = "inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all bg-white text-zinc-900 shadow-sm";
+        btnTunnel.className = "inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950";
+      } else {
+        if (detectedTunnelUrl) {
+          activeBaseUrl = detectedTunnelUrl;
+        } else {
+          const promptUrl = prompt('Ingresa la URL pública de tu túnel:', 'https://');
+          if (promptUrl && promptUrl.startsWith('http')) {
+            activeBaseUrl = promptUrl.trim();
+          }
+        }
+        btnTunnel.className = "inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all bg-white text-zinc-900 shadow-sm";
+        btnLocal.className = "inline-flex items-center justify-center rounded-sm px-2.5 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950";
+      }
+
+      inputActiveBaseUrl.value = activeBaseUrl;
+      playgroundTargetUrl.textContent = activeBaseUrl;
+      renderAiPrompt();
+      renderCodeSnippet();
+      checkHealth();
+    }
+
+    function updateBaseUrl(val) {
+      if (val && val.startsWith('http')) {
+        activeBaseUrl = val.trim().replace(/\/$/, '');
+        playgroundTargetUrl.textContent = activeBaseUrl;
+        renderAiPrompt();
+        renderCodeSnippet();
+        checkHealth();
+      }
+    }
+
+    function copyActiveBaseUrl() {
+      navigator.clipboard.writeText(activeBaseUrl);
+      const label = document.getElementById('copyUrlLabel');
+      label.textContent = '¡Copiado!';
+      setTimeout(() => label.textContent = 'Copiar', 2000);
+    }
+
+    function renderAiPrompt() {
+      const base = activeBaseUrl;
+      const promptText = `Actúa como desarrollador frontend senior. Necesito integrar nuestra aplicación con el servicio AgentLocalRag.
+El backend empresarial y el agente RAG están unificados bajo una sola URL base:
+
+URL BASE:
+${base}
+
+REGLAS DE CONSUMO:
+1. CORS está habilitado para todos los orígenes (*). No se requieren tokens de autorización.
+2. Para consultas factuales al Agente RAG:
+   - Endpoint: POST ${base}/api/ask
+   - Body JSON: { "pregunta": string, "session_id": string (opcional), "modelo": string (opcional) }
+   - Retorno JSON:
+     {
+       "success": true,
+       "data": {
+         "mensaje": string,         // Texto en lenguaje natural para la UI
+         "pregunta": string,
+         "fuentes": [{ id, documento, seccion, fragmento, score, relevancia_porcentaje }],
+         "tiene_fuentes": boolean
+       },
+       "metadata": { modelo, session_id, tiempo_respuesta_segundos, timestamp }
+     }
+3. Para consultar o modificar políticas en la base de datos SQLite del Backend:
+   - Listar políticas: GET ${base}/policies
+   - Obtener una: GET ${base}/policies/{id}
+   - Crear política: POST ${base}/policies -> Body: { "seccion": string, "titulo": string, "contenido": string }
+   - Modificar política: PUT ${base}/policies/{id} -> Body: { "contenido": string, "titulo": string }
+4. Para chequear la salud del servicio: GET ${base}/health
+5. Puedes leer la especificación completa en formato Markdown en: ${base}/docs.md`;
+
+      const el = document.getElementById('aiPromptCodeDisplay');
+      el.textContent = promptText;
+      Prism.highlightElement(el);
+    }
+
+    function copyAiPrompt() {
+      const text = document.getElementById('aiPromptCodeDisplay').textContent;
+      navigator.clipboard.writeText(text);
+      const btn = document.getElementById('btnCopyPromptLabel');
+      if (btn) btn.textContent = '¡Copiado!';
+      setTimeout(() => { if (btn) btn.textContent = 'Copiar Prompt'; }, 2000);
+    }
+
+    async function checkHealth() {
+      healthDot.className = "h-2 w-2 rounded-full bg-yellow-500 animate-pulse";
+      healthText.textContent = "Comprobando...";
+      
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${activeBaseUrl}/health`, { cache: 'no-store' });
+        const latency = Math.round(performance.now() - t0);
+        if (res.ok) {
+          const data = await res.json();
+          healthDot.className = "h-2 w-2 rounded-full bg-emerald-500";
+          healthText.textContent = "Conectado (200 OK)";
+          healthLatency.textContent = `(${latency}ms)`;
+          activeModelBadge.textContent = data.modelo || 'qwen2.5-coder:14b';
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        healthDot.className = "h-2 w-2 rounded-full bg-rose-500";
+        healthText.textContent = "Sin Conexión";
+        healthLatency.textContent = "";
+        activeModelBadge.textContent = "inactivo";
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const res = await fetch(`${activeBaseUrl}/api/models`);
+        if (res.ok) {
+          const data = await res.json();
+          availableModels = data.models || [];
+          pgAskModelo.innerHTML = '<option value="">(qwen2.5-coder:14b Activo)</option>';
+          availableModels.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `${m.id} (${m.tier || m.size_gb + ' GB'})`;
+            if (m.is_active) opt.textContent += ' ⭐ Activo';
+            pgAskModelo.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.warn('No se pudieron cargar modelos:', e);
+      }
+    }
+
+    function switchPlaygroundTab(tabKey) {
+      currentPgTab = tabKey;
+      const tabs = ['ask', 'policies-get', 'policies-post', 'models', 'health'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        const content = document.getElementById(`pgTabContent-${t}`);
+        if (btn && content) {
+          if (t === tabKey) {
+            btn.className = "inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all bg-white text-zinc-950 shadow-sm gap-1.5";
+            content.classList.remove('hidden');
+          } else {
+            btn.className = "inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950 gap-1.5";
+            content.classList.add('hidden');
+          }
+        }
+      });
+    }
+
+    function setPresetQuestion(q) {
+      document.getElementById('pgAskPregunta').value = q;
+      switchPlaygroundTab('ask');
+    }
+
+    async function executeCurrentPlaygroundTab() {
+      const btn = document.getElementById('btnExecutePlayground');
+      const btnText = document.getElementById('pgExecuteText');
+      const badgeStatus = document.getElementById('pgResStatusBadge');
+      const badgeTime = document.getElementById('pgResTimeBadge');
+      const answerContainer = document.getElementById('pgAnswerContainer');
+      const emptyPlaceholder = document.getElementById('pgEmptyPlaceholder');
+      const answerText = document.getElementById('pgAnswerText');
+      const sourcesContainer = document.getElementById('pgSourcesContainer');
+      const sourcesList = document.getElementById('pgSourcesList');
+      const rawJson = document.getElementById('pgRawJson');
+
+      btn.disabled = true;
+      btnText.textContent = "Procesando...";
+      badgeStatus.className = "inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-mono text-yellow-600";
+      badgeStatus.textContent = "En progreso...";
+
+      const t0 = performance.now();
+      let endpoint = '';
+      let options = {};
+
+      try {
+        if (currentPgTab === 'ask') {
+          endpoint = `${activeBaseUrl}/api/ask`;
+          const pregunta = document.getElementById('pgAskPregunta').value.trim();
+          const sessionId = document.getElementById('pgAskSessionId').value.trim() || 'default';
+          const modeloVal = document.getElementById('pgAskModelo').value || null;
+          const resetVal = document.getElementById('pgAskReset').checked;
+
+          options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pregunta,
+              session_id: sessionId,
+              modelo: modeloVal,
+              reset_history: resetVal
+            })
+          };
+        } else if (currentPgTab === 'policies-get') {
+          endpoint = `${activeBaseUrl}/policies`;
+          options = { method: 'GET' };
+        } else if (currentPgTab === 'policies-post') {
+          endpoint = `${activeBaseUrl}/policies`;
+          const seccion = document.getElementById('pgPolicySeccion').value.trim();
+          const titulo = document.getElementById('pgPolicyTitulo').value.trim();
+          const contenido = document.getElementById('pgPolicyContenido').value.trim();
+          options = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ seccion, titulo, contenido })
+          };
+        } else if (currentPgTab === 'models') {
+          endpoint = `${activeBaseUrl}/api/models`;
+          options = { method: 'GET' };
+        } else if (currentPgTab === 'health') {
+          endpoint = `${activeBaseUrl}/health`;
+          options = { method: 'GET' };
+        }
+
+        const res = await fetch(endpoint, options);
+        const elapsedSec = ((performance.now() - t0) / 1000).toFixed(3);
+        const data = await res.json();
+
+        badgeStatus.className = res.ok
+          ? "inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-mono text-emerald-700"
+          : "inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-mono text-rose-700";
+        badgeStatus.textContent = `${res.status} ${res.statusText || (res.ok ? 'OK' : 'Error')}`;
+        badgeTime.textContent = `${elapsedSec}s`;
+
+        emptyPlaceholder.classList.add('hidden');
+        answerContainer.classList.remove('hidden');
+
+        if (currentPgTab === 'ask') {
+          const msg = (data.data && data.data.mensaje) ? data.data.mensaje : (data.respuesta || "");
+          answerText.textContent = msg;
+          const fuentes = (data.data && data.data.fuentes) ? data.data.fuentes : (data.fuentes || []);
+          if (fuentes && fuentes.length > 0) {
+            sourcesContainer.classList.remove('hidden');
+            sourcesList.innerHTML = '';
+            fuentes.forEach((f) => {
+              const card = document.createElement('div');
+              card.className = "bg-white p-2.5 rounded border border-zinc-200 text-xs space-y-1 shadow-xs";
+              card.innerHTML = `
+                <div class="flex items-center justify-between text-zinc-700 font-mono text-[11px]">
+                  <span class="text-zinc-950 font-bold">📄 ${f.documento || f.archivo}</span>
+                  ${f.relevancia_porcentaje ? `<span class="px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800 border border-zinc-200 text-[10px] font-mono">${f.relevancia_porcentaje}</span>` : ''}
+                </div>
+                ${f.seccion ? `<div class="text-[10px] text-zinc-500 font-mono">${f.seccion}</div>` : ''}
+                <p class="text-zinc-600 text-[11px] leading-relaxed italic line-clamp-3">"${f.fragmento}"</p>
+              `;
+              sourcesList.appendChild(card);
+            });
+          } else {
+            sourcesContainer.classList.add('hidden');
+          }
+        } else if (currentPgTab === 'policies-get' && data.politicas) {
+          answerText.innerHTML = `<strong>Total de Políticas en BD SQLite:</strong> ${data.politicas.length}<br>` + 
+            data.politicas.map(p => `• <strong>${p.seccion}:</strong> ${p.titulo}`).join('<br>');
+          sourcesContainer.classList.add('hidden');
+        } else {
+          answerText.textContent = data.mensaje || JSON.stringify(data, null, 2);
+          sourcesContainer.classList.add('hidden');
+        }
+
+        rawJson.textContent = JSON.stringify(data, null, 2);
+        Prism.highlightElement(rawJson);
+
+      } catch (err) {
+        const elapsedSec = ((performance.now() - t0) / 1000).toFixed(3);
+        badgeStatus.className = "inline-flex items-center rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-mono text-rose-700";
+        badgeStatus.textContent = "Error";
+        badgeTime.textContent = `${elapsedSec}s`;
+        emptyPlaceholder.classList.add('hidden');
+        answerContainer.classList.remove('hidden');
+        answerText.innerHTML = `<span class="text-rose-600 font-semibold">Error:</span> ${err.message}`;
+        sourcesContainer.classList.add('hidden');
+        rawJson.textContent = JSON.stringify({ error: err.message }, null, 2);
+        Prism.highlightElement(rawJson);
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = "Ejecutar Petición";
+      }
+    }
+
+    function copyPlaygroundResponseJson() {
+      const code = document.getElementById('pgRawJson').textContent;
+      navigator.clipboard.writeText(code);
+      const lbl = document.getElementById('lblCopyPgJson');
+      lbl.textContent = '¡Copiado!';
+      setTimeout(() => lbl.textContent = 'Copiar JSON', 2000);
+    }
+
+    function switchCodeTab(tab) {
+      currentCodeTab = tab;
+      const tabs = ['react-hook', 'fetch', 'axios', 'curl'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`codeTabBtn-${t}`);
+        if (t === tab) {
+          btn.className = "inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all bg-white text-zinc-950 shadow-sm";
+        } else {
+          btn.className = "inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium transition-all text-zinc-600 hover:text-zinc-950";
+        }
+      });
+      renderCodeSnippet();
+    }
+
+    function renderCodeSnippet() {
+      const display = document.getElementById('snippetCodeDisplay');
+      const fileTitle = document.getElementById('codeFileTitle');
+      const base = activeBaseUrl;
+
+      if (currentCodeTab === 'react-hook') {
+        fileTitle.textContent = "useAgentChat.ts";
+        display.className = "language-typescript";
+        display.textContent = `import { useState } from 'react';
+
+export function useAgentChat(sessionId: string = 'frontend_session_1') {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 1. Consulta RAG (Preguntas al Agente)
+  const askAgent = async (pregunta: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("${base}/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pregunta, session_id: sessionId }),
+      });
+      if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+      const json = await res.json();
+      return json.data; // { mensaje, fuentes, tiene_fuentes }
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. Consultar Políticas en SQLite del Backend
+  const getPolicies = async () => {
+    const res = await fetch("${base}/policies");
+    if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+    const data = await res.json();
+    return data.politicas;
+  };
+
+  return { askAgent, getPolicies, loading, error };
+}`;
+      } else if (currentCodeTab === 'fetch') {
+        fileTitle.textContent = "agentClient.js";
+        display.className = "language-javascript";
+        display.textContent = `// 1. Preguntar al Agente RAG
+async function askAgent(pregunta) {
+  const res = await fetch("${base}/api/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pregunta, session_id: "web_client" })
+  });
+  const { data } = await res.json();
+  console.log("Respuesta natural:", data.mensaje);
+  console.log("Fuentes:", data.fuentes);
+  return data;
+}
+
+// 2. Obtener Políticas de la BD
+async function getPolicies() {
+  const res = await fetch("${base}/policies");
+  const data = await res.json();
+  return data.politicas;
+}`;
+      } else if (currentCodeTab === 'axios') {
+        fileTitle.textContent = "agentApi.ts";
+        display.className = "language-typescript";
+        display.textContent = `import axios from 'axios';
+
+export const apiClient = axios.create({
+  baseURL: "${base}",
+  headers: { "Content-Type": "application/json" }
+});
+
+// Agente RAG
+export const askAgent = async (pregunta: string) => {
+  const res = await apiClient.post('/api/ask', { pregunta });
+  return res.data.data;
+};
+
+// Backend Empresarial SQLite
+export const getPolicies = () => apiClient.get('/policies');
+export const createPolicy = (data: { seccion: string; titulo: string; contenido: string }) => apiClient.post('/policies', data);`;
+      } else if (currentCodeTab === 'curl') {
+        fileTitle.textContent = "terminal.sh";
+        display.className = "language-bash";
+        display.textContent = `# 1. Consulta RAG al Agente
+curl -X POST "${base}/api/ask" \\
+  -H "Content-Type: application/json" \\
+  -d '{"pregunta": "¿Cuál es la duración del turno nocturno de soporte técnico?"}'
+
+# 2. Listar Políticas de la BD Empresarial
+curl -X GET "${base}/policies"
+
+# 3. Documentación técnica para Agentes de IA
+curl -X GET "${base}/docs.md"`;
+      }
+
+      Prism.highlightElement(display);
+    }
+
+    function copyCurrentCodeSnippet() {
+      const code = document.getElementById('snippetCodeDisplay').textContent;
+      navigator.clipboard.writeText(code);
+      const lbl = document.getElementById('btnCopySnippetLabel');
+      lbl.textContent = '¡Copiado!';
+      setTimeout(() => lbl.textContent = 'Copiar Código', 2000);
+    }
+  </script>
+</body>
+</html>

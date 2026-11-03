@@ -187,18 +187,26 @@ pip install -r requirements.txt
 
 ---
 
-### Paso 2: Iniciar el Agente RAG (Puerto 8000)
+### Paso 2: Iniciar el Agente RAG + Portal de Docs + Túnel Público (Puerto 8000)
 
 En tu **Terminal 1**:
 
 ```bash
 source .venv/bin/activate
-python app.py
+python run_agent.py
+# (O alternativamente: python app.py o ./start_agent.sh)
 ```
 
-- **Servidor del Agente:** `http://localhost:8000`
-- **Swagger UI Interactivo:** `http://localhost:8000/docs`
-- **Frontend Integrado:** `http://localhost:8000/`
+Al ejecutarlo:
+1. Inicia la **API REST** de FastAPI en `http://localhost:8000`.
+2. Genera un **Túnel Público HTTPS seguro con Cloudflare** (`https://<subdomain>.trycloudflare.com`) para que tu equipo de Frontend se conecte desde cualquier máquina.
+3. Abre automáticamente en tu navegador el **Portal Interactivo de Documentación** (`http://localhost:8000/docs-portal`).
+4. Muestra en consola las URLs locales y públicas para compartir con tu equipo.
+
+- **Portal Interactivo de Documentación:** `http://localhost:8000/docs-portal` (o la URL del túnel `/docs-portal`)
+- **Túnel Público para Frontend:** `https://<subdomain>.trycloudflare.com`
+- **Swagger UI Clásico:** `http://localhost:8000/docs`
+- **Frontend Chat Integrado:** `http://localhost:8000/`
 
 ---
 
